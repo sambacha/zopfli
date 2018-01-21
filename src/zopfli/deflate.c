@@ -24,7 +24,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #include <assert.h>
 #include <stdio.h>
-#include <pthread.h>
 #include <unistd.h>
 #include <dirent.h>
 #if SC_PLATFORM == SC_PLATFORM_LINUX
@@ -35,6 +34,8 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <pthread.h>
 #endif
 
 #include "inthandler.h"
@@ -1317,6 +1318,8 @@ typedef struct ZopfliThread {
   ZopfliLZ77Store store;
 
   SymbolStats* beststats;
+
+  size_t affmask;
 } ZopfliThread;
 
 #ifdef _WIN32
@@ -1437,7 +1440,6 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   int neednext = 0;
   size_t nextblock = bkstart;
   size_t n, i;
-  size_t affcntr = 0;
 #ifndef _WIN32
   cpu_set_t *cpuset = malloc(sizeof(cpu_set_t) * options->affamount);
 #endif
@@ -1469,15 +1471,26 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
     }
   }
 #endif
-
-  for(i=0;i<numthreads;++i) {
+  {
+    size_t affcntr = 0;
+    for(i=0;i<numthreads;++i) {
 #ifndef _WIN32
-   pthread_attr_init(&(thr_attr[i]));
-   pthread_attr_setdetachstate(&(thr_attr[i]), PTHREAD_CREATE_DETACHED);
+     pthread_attr_init(&(thr_attr[i]));
+     pthread_attr_setdetachstate(&(thr_attr[i]), PTHREAD_CREATE_DETACHED);
 #endif
-   t[i].is_running = 0;
-   t[i].allstatscontrol = 0;
-   statsdb[i].beststats = 0;
+     t[i].is_running = 0;
+     t[i].allstatscontrol = 0;
+     statsdb[i].beststats = 0;
+     if(options->affamount>0) {
+#ifdef _WIN32
+       t[i].affmask = options->threadaffinity[affcntr];
+#else
+       t[i].affmask = affcntr;
+#endif
+       ++affcntr;
+       if(affcntr >= options->affamount) affcntr = 0;
+     }
+    }
   }
 
   for (i = bkstart; i <= bkend; ++i) {
@@ -1584,12 +1597,10 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
 #endif
               if(options->affamount>0) {
 #ifdef _WIN32
-                SetThreadAffinityMask(thr[threnum], options->threadaffinity[affcntr]);
+                SetThreadAffinityMask(thr[threnum], t[threnum].affmask);
 #else
-                pthread_setaffinity_np(thr[threnum], sizeof(cpu_set_t), &cpuset[affcntr]);
+                pthread_setaffinity_np(thr[threnum], sizeof(cpu_set_t), &cpuset[t[threnum].affmask]);
 #endif
-                ++affcntr;
-                if(affcntr >= options->affamount) affcntr = 0;
               }
             } else {
 #ifdef _WIN32
@@ -1663,6 +1674,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   free(thr);
 #ifndef _WIN32
   free(thr_attr);
+  free(cpuset);
 #endif
   free(tempcost);
 }
