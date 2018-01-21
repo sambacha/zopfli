@@ -37,4 +37,6 @@ void ZopfliInitOptions(ZopfliOptions* options) {
   options->mode = 0;
   options->numthreads = 1;
   options->statimportance = 100;
+  options->threadaffinity = NULL;
+  options->affamount = 0;
 }

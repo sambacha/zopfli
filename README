@@ -237,11 +237,20 @@ Description of new commands list in Zopfli KrzYmod:
    out-of-order blocks returned by threads that are then processed and merged when they
    follow in-order block returned by given thread.
 
-27. --idle
+27. --aff#
+   Specify affinity masks to use per thread. Use , as a separator. For example:
+   --aff3,24,100 will use CPU0+1 for thread 0, CPU3+4 for thread 1 and CPU2+5+6
+   for thread 2. The process will repeat itself in case more than 3 threads are used.
+   This functionality was added to overcome Ryzen CCX latency that may be caused
+   by the thread scheduler forcing threads to jump from one CCX to another.
+   In case you have Ryzen 1600X and want to use 12 threads, specify it as:
+   --aff63,4032
+
+28. --idle
 
    Run Zopfli in lowest priority to not slow down other processes.
 
-28. --v#
+29. --v#
 
    This option is formerly known as just -v and it extends control over Zopfli
    verbosity. The default is 2 and it can be set from 0 (quiet) to 5 (most verbose):

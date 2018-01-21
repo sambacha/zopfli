@@ -28,8 +28,13 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <unistd.h>
 #include <dirent.h>
 #if SC_PLATFORM == SC_PLATFORM_LINUX
+#include <sched.h>
 #include <sys/stat.h>
 #include <errno.h>
+#endif
+
+#ifdef _WIN32
+#include <windows.h>
 #endif
 
 #include "inthandler.h"
@@ -1216,7 +1221,7 @@ static int DoDir(char* dir) {
   if(testdir) {
     closedir(testdir);
   } else if (ENOENT == errno) {
-#ifdef __WIN32__
+#ifdef _WIN32
     mkdir(dir);
 #else
     mkdir(dir, 0777);
@@ -1314,7 +1319,11 @@ typedef struct ZopfliThread {
   SymbolStats* beststats;
 } ZopfliThread;
 
+#ifdef _WIN32
+DWORD WINAPI threading(void *a) {
+#else
 static void *threading(void *a) {
+#endif
 
   int tries = 1;
   size_t blocksize = 0;
@@ -1428,23 +1437,48 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   int neednext = 0;
   size_t nextblock = bkstart;
   size_t n, i;
+  size_t affcntr = 0;
+#ifndef _WIN32
+  cpu_set_t *cpuset = malloc(sizeof(cpu_set_t) * options->affamount);
+#endif
   zfloat *tempcost = malloc(sizeof(*tempcost) * (bkend+1));
   unsigned char lastthread = 0;
   unsigned char* blockdone = calloc(bkend+1,sizeof(unsigned char));
+#ifdef _WIN32
+  HANDLE *thr = malloc(sizeof(HANDLE) * (options->numthreads>bkend+1?bkend+1:options->numthreads));
+#else
   pthread_t *thr = malloc(sizeof(pthread_t) * (options->numthreads>bkend+1?bkend+1:options->numthreads));
-  pthread_attr_t thr_attr;
+  pthread_attr_t *thr_attr = malloc(sizeof(pthread_attr_t) * (options->numthreads>bkend+1?bkend+1:options->numthreads));
+#endif
   ZopfliThread *t = malloc(sizeof(ZopfliThread) * numthreads);
   ZopfliLZ77Store *tempstore = malloc(sizeof(ZopfliLZ77Store) * (bkend+1));
   ZopfliBestStats* statsdb = malloc(sizeof(ZopfliBestStats) * numthreads);
 
+#ifndef _WIN32
+  for(i=0;i<options->affamount;++i) {
+    CPU_ZERO(&(cpuset[i]));
+    {
+      size_t cntr = 0;
+      size_t bitpos = 1;
+      while(bitpos <= options->threadaffinity[i]) {
+        if(options->threadaffinity[i] && bitpos)
+          CPU_SET(cntr, &(cpuset[i]));
+        bitpos = bitpos << 1;
+        ++cntr;
+      }
+    }
+  }
+#endif
+
   for(i=0;i<numthreads;++i) {
+#ifndef _WIN32
+   pthread_attr_init(&(thr_attr[i]));
+   pthread_attr_setdetachstate(&(thr_attr[i]), PTHREAD_CREATE_DETACHED);
+#endif
    t[i].is_running = 0;
    t[i].allstatscontrol = 0;
    statsdb[i].beststats = 0;
   }
-
-  pthread_attr_init(&thr_attr);
-  pthread_attr_setdetachstate(&thr_attr, PTHREAD_CREATE_DETACHED);
 
   for (i = bkstart; i <= bkend; ++i) {
     size_t start = i == 0 ? instart : (*splitpoints_uncompressed)[i - 1];
@@ -1543,9 +1577,26 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             t[threnum].is_running = 1;
             PrintProgress(v, start, inend, i, bkend);
             if(options->numthreads) {
-              pthread_create(&thr[threnum], &thr_attr, threading, (void *)&t[threnum]);
+#ifdef _WIN32
+              thr[threnum] = CreateThread(NULL, 0, threading, (void *)&t[threnum], 0, NULL);
+#else
+              pthread_create(&thr[threnum], &(thr_attr[threnum]), threading, (void *)&t[threnum]);
+#endif
+              if(options->affamount>0) {
+#ifdef _WIN32
+                SetThreadAffinityMask(thr[threnum], options->threadaffinity[affcntr]);
+#else
+                pthread_setaffinity_np(thr[threnum], sizeof(cpu_set_t), &cpuset[affcntr]);
+#endif
+                ++affcntr;
+                if(affcntr >= options->affamount) affcntr = 0;
+              }
             } else {
+#ifdef _WIN32
+              threading(&t[threnum]);
+#else
               (*threading)(&t[threnum]);
+#endif
             }
             ++threadsrunning;
             if(i>=bkend)
@@ -1610,6 +1661,9 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   free(tempstore);
   free(t);
   free(thr);
+#ifndef _WIN32
+  free(thr_attr);
+#endif
   free(tempcost);
 }
 

@@ -17,6 +17,7 @@ ZDEFOPT = -Ofast -D NDEBUG -fno-associative-math
 ZARMOPT = -Ofast -D NDEBUG -fno-associative-math
 ZADDOPT = -g0 -s -flto -fuse-linker-plugin -flto-partition=max -flto-compression-level=0 -ffat-lto-objects -fgraphite-identity -floop-nest-optimize
 CAVXFLAGS = -mavx -mtune=corei7-avx -march=corei7-avx
+CZENFLAGS = -mno-avx -march=znver1 -mtune=broadwell #best for GCC 7
 CNEONFLAGS = -march=armv7-a -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -mthumb-interwork -mno-unaligned-access -mneon-for-64bits -mstructure-size-boundary=32 -fno-tree-slp-vectorize -fno-crossjumping -ftracer -ftree-loop-ivcanon -fno-tree-loop-distribution -fselective-scheduling2 -fsel-sched-pipelining -fira-region=all -free -fno-cx-limited-range -fno-defer-pop -fno-function-cse -fno-sched-interblock -fno-sched-last-insn-heuristic -fno-sel-sched-pipelining-outer-loops -fno-tree-fre -fno-tree-loop-im -fno-zero-initialized-in-bss -fno-ipa-reference -fno-ipa-cp -fbranch-target-load-optimize2 -ffunction-sections -fdata-sections
 
 ZOPFLILIB_SRC = src/zopfli/blocksplitter.c src/zopfli/cache.c\
@@ -39,14 +40,17 @@ ZOPFLIPNGBIN_SRC := src/zopflipng/zopflipng_bin.cc
 zopfli:
 	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEFOPT) $(ZADDOPT) -o zopfli
 
+zopfliryzen:
+	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEFOPT) $(CZENFLAGS) $(ZADDOPT) -o zopfliR
+
 zopfliavx:
-	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -o zopfli
+	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -o zopfliA
 
 zopflineon:
-	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopfli
+	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopfliN
 
 zopflidebug:
-	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEBUG) -o zopfli
+	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEBUG) -o zopfliD
 
 defdbparser:
 	$(CC) -static $(DEFDBPARSER_SRC) $(ZARMOPT) -o defdbparser
@@ -59,30 +63,38 @@ libzopfli:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEFOPT) $(ZADDOPT) -c
 	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) $(ZDEFOPT) $(ZADDOPT) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.1
 
+libzopfliryzen:
+	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEFOPT) $(CZENFLAGS) $(ZADDOPT)  -c
+	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) $(ZDEFOPT) $(CZENFLAGS) $(ZADDOPT) -shared -Wl,-soname,libzopfli.so.1 -o libzopfliR.so.1.0.1
+
 libzopfliavx:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT)  -c
-	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.1
+	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -shared -Wl,-soname,libzopfli.so.1 -o libzopfliA.so.1.0.1
 
 libzopflineon:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT)  -c
-	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.1
+	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -shared -Wl,-soname,libzopfli.so.1 -o libzopfliN.so.1.0.1
 
 # ZopfliPNG binary
 zopflipng:
 	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEFOPT) $(ZADDOPT) -c
 	$(CXX) -static -static-libgcc -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZDEFOPT) $(ZADDOPT) -o zopflipng
+
+zopflipngzen:
+	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEFOPT) $(CZENFLAGS) $(ZADDOPT) -c
+	$(CXX) -static -static-libgcc -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZDEFOPT) $(CZENFLAGS) $(ZADDOPT) -o zopflipngR
 	
 zopflipngavx:
 	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -c
-	$(CXX) -static -static-libgcc -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -o zopflipng
+	$(CXX) -static -static-libgcc -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -o zopflipngA
 
 zopflipngneon:
 	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -c
-	$(CXX) -static -static-libgcc -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopflipng
+	$(CXX) -static -static-libgcc -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopflipngN
 
 zopflipngdebug:
 	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEBUG) -c
-	$(CXX) -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZDEBUG) -o zopflipng
+	$(CXX) -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZDEBUG) -o zopflipngD
 
 # ZopfliPNG shared library
 libzopflipng:

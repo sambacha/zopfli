@@ -720,6 +720,26 @@ int main(int argc, char* argv[]) {
     }  else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 't'
              && arg[3] >= '0' && arg[3] <= '9') {
       options.numthreads = atoi(arg + 3);
+    }  else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 'a' && arg[3] == 'f'
+             && arg[4] == 'f' && arg[5] >= '0' && arg[5] <= '9') {
+      const char *aff = arg+5;
+      char buff[2] = {0, 0};
+      size_t pos = 0;
+      options.threadaffinity = malloc(sizeof(size_t));
+      while(aff[pos] != '\0') {
+        options.threadaffinity[options.affamount] = 0;
+        while(aff[pos] != ',') {
+          options.threadaffinity[options.affamount] *= 10;
+          buff[0] = aff[pos];
+          options.threadaffinity[options.affamount] += atoi(buff);
+          ++pos;
+          if(aff[pos] == '\0') break;
+        }
+        ++options.affamount;
+        options.threadaffinity = (size_t*)realloc(options.threadaffinity, (options.affamount+1) * sizeof(size_t));
+        if(aff[pos] == '\0') break;
+        ++pos;
+      }
     }  else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 'm' && arg[3] == 'b'
              && arg[4] >= '0' && arg[4] <= '9') {
       options.blocksplittingmax = atoi(arg + 4);
@@ -842,6 +862,7 @@ int main(int argc, char* argv[]) {
       fprintf(stderr,
           "      MISCELLANEOUS:\n"
           "  --t#          compress using # threads, 0 = compat. (d:1)\n"
+          "  --aff#        thread affinity: mask,mask,mask... (d: not set)\n"
           "  --idle        use idle process priority\n"
           "  --pass#       recompress last split points max # times (d: 0)\n");
       fprintf(stderr,
@@ -911,6 +932,7 @@ int main(int argc, char* argv[]) {
             "Error: Please provide filename to compress.\nFor help, type: %s --h\n", argv[0]);
      return EXIT_FAILURE;
   }
+  if(options.affamount>0) free(options.threadaffinity);
 
   return EXIT_SUCCESS;
 }

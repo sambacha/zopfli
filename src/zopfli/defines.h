@@ -8,11 +8,13 @@ required by Zopfli KrzYmod.
 #ifndef DEFINES_H_
 #define DEFINES_H_
 
+#define _GNU_SOURCE
+
 #include <float.h>
 
-#define VERYEAR   16
-#define VERMONTH  11
-#define VERCOMMIT 2
+#define VERYEAR   18
+#define VERMONTH  1
+#define VERCOMMIT 1
 
 #define BESTSTATSDBVER 1
 
