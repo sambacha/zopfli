@@ -5961,11 +5961,19 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
           best_size = size[ranking[0]];
           e_since_best = 0;
           if(settings->verbose>2)
-            fprintf(stderr,"GENETIC_ALGORITHM> Generation %d: %d bytes      \r", e, best_size);
+            fprintf(stderr,"GENETIC_ALGORITHM>        Generation %d: %d bytes      \r", e, best_size);
           if(settings->verbose>3)
             fprintf(stderr,"\n");
+        } else {
+          ++e_since_best;
+          if(settings->verbose>2) {
+            unsigned f=e+(settings->ga.number_of_stagnations-e_since_best);
+            if(settings->ga.number_of_generations != 0 && f > settings->ga.number_of_generations) {
+              f = settings->ga.number_of_generations;
+            }
+            fprintf(stderr,"GENETIC_ALGORITHM> %.1f%%\r",100.0 * (zpfloat)e / (zpfloat)f);
+          }
         }
-        else ++e_since_best;
         /*generate offspring*/
         for(c = 0; c < settings->ga.number_of_offspring; ++c)
         {
@@ -6024,7 +6032,7 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
           lodepng_free(dummy);
           total_size += size[ranking[last - c]];
           if(settings->verbose>4)
-            fprintf(stderr,"GENETIC_ALGORITHM> Generation %d: %d bytes      \r", e, (int)size[ranking[last - c]]);
+            fprintf(stderr,"GENETIC_ALGORITHM>        Generation %d: %d bytes      \r", e, (int)size[ranking[last - c]]);
         }
       }
     }

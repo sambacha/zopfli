@@ -236,6 +236,7 @@ void ShowHelp() {
          "--rw=[number]:   initial random W for iteration stats (1-65535, d: 1)\n"
          "--rz=[number]:   initial random Z for iteration stats (1-65535, d: 2)\n"
          "--t=[number]:    compress using # threads, 0 = compat. (d:1)\n"
+         "--aff=[n,n,...]: compression thread affinity: mask,mask,mask... (d: not set)\n"
          "--idle:          use idle process priority\n"
          "   more options available only in Zopfli\n"
          "\n"
@@ -392,6 +393,33 @@ int main(int argc, char *argv[]) {
         IdlePriority();
       } else if (name == "--t") {
         png_options.numthreads = num;
+      } else if (name == "--aff") {
+        char buff[2] = {0, 0};
+        png_options.threadaffinity = (size_t*)malloc(sizeof(size_t));
+        png_options.threadaffinity[png_options.affamount] = 0;
+        for (size_t j = 0; j < value.size(); j++) {
+          switch(value[j]) {
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+              png_options.threadaffinity[png_options.affamount] *= 10;
+              buff[0] = value[j];
+              png_options.threadaffinity[png_options.affamount] += atoi(buff);
+              break;
+            case ',':
+              ++png_options.affamount;
+              png_options.threadaffinity = (size_t*)realloc(png_options.threadaffinity, (png_options.affamount+1) * sizeof(size_t));
+              png_options.threadaffinity[png_options.affamount] = 0;
+          }
+        }
+        ++png_options.affamount;
       } else if (name == "--splitting") {
         // ignored
       } else if (name == "--filters") {

@@ -148,6 +148,9 @@ typedef struct CZopfliPNGOptions {
 
   int statimportance;
 
+  size_t* threadaffinity;
+  size_t affamount;
+
   int try_paletteless_size;
 
   int ga_population_size;
@@ -297,6 +300,16 @@ struct ZopfliPNGOptions {
   calculations. Default is 100, meaning 1 : 0.5.
   */
   int statimportance;
+
+  /*
+  Thread affinity which may help with schedulers that don't properly
+  support separate CPU dies like Ryzen CCX.
+  Defined as <number>,<number>,<number>...
+  A numer specifies which cores to use per thread. For example
+  to use core0+1,core3+4, core2+5+6: 3,24,100
+  */
+  size_t* threadaffinity;
+  size_t affamount;
 
   // Maximum size after which to try full color image compression on paletted image
   int try_paletteless_size;

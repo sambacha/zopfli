@@ -1447,10 +1447,10 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   unsigned char lastthread = 0;
   unsigned char* blockdone = calloc(bkend+1,sizeof(unsigned char));
 #ifdef _WIN32
-  HANDLE *thr = malloc(sizeof(HANDLE) * (options->numthreads>bkend+1?bkend+1:options->numthreads));
+  HANDLE *thr = malloc(sizeof(HANDLE) * numthreads);
 #else
-  pthread_t *thr = malloc(sizeof(pthread_t) * (options->numthreads>bkend+1?bkend+1:options->numthreads));
-  pthread_attr_t *thr_attr = malloc(sizeof(pthread_attr_t) * (options->numthreads>bkend+1?bkend+1:options->numthreads));
+  pthread_t *thr = malloc(sizeof(pthread_t) * numthreads);
+  pthread_attr_t *thr_attr = malloc(sizeof(pthread_attr_t) * numthreads);
 #endif
   ZopfliThread *t = malloc(sizeof(ZopfliThread) * numthreads);
   ZopfliLZ77Store *tempstore = malloc(sizeof(ZopfliLZ77Store) * (bkend+1));

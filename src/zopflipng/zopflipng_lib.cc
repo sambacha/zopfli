@@ -59,6 +59,8 @@ ZopfliPNGOptions::ZopfliPNGOptions()
   , mode(0)
   , numthreads(1)
   , statimportance(100)
+  , threadaffinity(NULL)
+  , affamount(0)
   , try_paletteless_size(2048)
   , ga_population_size(19)
   , ga_max_evaluations(0)
@@ -93,6 +95,8 @@ unsigned CustomPNGDeflate(unsigned char** out, size_t* outsize,
   options.mode              = png_options->mode;
   options.numthreads        = png_options->numthreads;
   options.statimportance    = png_options->statimportance;
+  options.threadaffinity    = png_options->threadaffinity;
+  options.affamount         = png_options->affamount;
 
   ZopfliDeflate(&options, 2 /* Dynamic */, 1, in, insize, &bp, out, outsize, 0);
 
@@ -282,6 +286,7 @@ void LossyOptimizeTransparent(unsigned char* image, unsigned w, unsigned h,
           }
         }
       }
+      break;
     case 5: // Paeth filter
       for (size_t j = 3; j < (w << 2); j += 4) {  // First line (border effects)
         // if alpha is 0, alter the RGB value to a possibly more efficient one.
@@ -1004,6 +1009,8 @@ extern "C" void CZopfliPNGSetDefaults(CZopfliPNGOptions* png_options) {
   png_options->mode                     = opts.mode;
   png_options->numthreads               = opts.numthreads;
   png_options->statimportance           = opts.statimportance;
+  png_options->threadaffinity           = opts.threadaffinity;
+  png_options->affamount                = opts.affamount;
   png_options->try_paletteless_size     = opts.try_paletteless_size;
   png_options->ga_population_size       = opts.ga_population_size;
   png_options->ga_max_evaluations       = opts.ga_max_evaluations;
@@ -1040,6 +1047,8 @@ extern "C" int CZopfliPNGOptimize(const unsigned char* origpng,
   opts.mode                     = png_options->mode;
   opts.numthreads               = png_options->numthreads;
   opts.statimportance           = png_options->statimportance;
+  opts.threadaffinity           = png_options->threadaffinity;
+  opts.affamount                = png_options->affamount;
   opts.try_paletteless_size     = png_options->try_paletteless_size;
   opts.ga_population_size       = png_options->ga_population_size;
   opts.ga_max_evaluations       = png_options->ga_max_evaluations;
