@@ -58,7 +58,8 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
                           size_t start, size_t end,
                           zfloat* smallest) {
   SplitCostContext* c = (SplitCostContext*)context;
-  if (end - start < 1024) {
+  size_t size = end - start;
+  if (size < (((c->options->mode & 0x0200) == 0x0200)?c->options->findminimumrec:1024)) {
     zfloat best = ZOPFLI_LARGE_FLOAT;
     size_t result = start;
     size_t i;
@@ -69,45 +70,49 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
         result = i;
       }
     }
-    if(c->options->verbose>5) fprintf(stderr," [%lu - %lu] Best: %.0f\n",(unsigned long)start,(unsigned long)end,(zpfloat)best);
     *smallest = best;
     return result;
   } else {
     /* Try to find minimum faster by recursively checking multiple points. */
+    size_t max_recursion = 
+      (c->options->mode & 0x0200) == 0x0200?
+        size/c->options->findminimumrec<2?
+          2
+          :size/c->options->findminimumrec
+        :c->options->findminimumrec;
     size_t i;
-    size_t *p = (size_t*)malloc(sizeof(*p) * c->options->findminimumrec);
-    zfloat *vp = (zfloat*)malloc(sizeof(*vp) * c->options->findminimumrec);
+    size_t *p = (size_t*)malloc(sizeof(*p) * max_recursion);
+    zfloat *vp = (zfloat*)malloc(sizeof(*vp) * max_recursion);
     size_t besti;
     zfloat best;
     zfloat lastbest = ZOPFLI_LARGE_FLOAT;
     size_t pos = start;
 
     for (;;) {
-      if (end - start <= c->options->findminimumrec) break;
+      if (end - start <= max_recursion) break;
 
-      for (i = 0; i < c->options->findminimumrec; i++) {
-        p[i] = start + (i + 1) * ((end - start) / (c->options->findminimumrec + 1));
+      for (i = 0; i < max_recursion; i++) {
+        p[i] = start + (i + 1) * ((end - start) / (max_recursion + 1));
         vp[i] = f(p[i], context);
+        if(c->options->verbose>5) fprintf(stderr,"%lu   \r",(unsigned long)(max_recursion - i));
       }
       besti = 0;
       best = vp[0];
-      for (i = 1; i < c->options->findminimumrec; i++) {
+      for (i = 1; i < max_recursion; i++) {
         if (vp[i] < best) {
           best = vp[i];
           besti = i;
         }
       }
-      if (best > lastbest) {
-        if(c->options->verbose>5) fprintf(stderr," [%lu - %lu]\n",(unsigned long)start,(unsigned long)end);
+      if (best > lastbest)
         break;
-      }
 
       start = besti == 0 ? start : p[besti - 1];
-      end = besti == c->options->findminimumrec - 1 ? end : p[besti + 1];
+      end = besti == max_recursion - 1 ? end : p[besti + 1];
 
       pos = p[besti];
       lastbest = best;
-      if(c->options->verbose>5) fprintf(stderr," [%lu - %lu] Best: %.0f\n",(unsigned long)start,(unsigned long)end,(zpfloat)best);
+      if(c->options->verbose>5) fprintf(stderr," [%lu] Best: %.0f   \n",(unsigned long)pos,(zpfloat)best);
     }
     *smallest = lastbest;
     free(p);

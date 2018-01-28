@@ -1277,11 +1277,11 @@ static int StatsDBSave(ZopfliBestStats* statsdb) {
   return 1;
 }
 
-static void PrintProgress(int v, size_t start, size_t inend, size_t i, size_t npoints) {
-  if(v>0) fprintf(stderr, "Progress: %.1f%%",100.0 * (zpfloat) start / (zpfloat)inend);
+static void PrintProgress(int v, size_t start, size_t inend, size_t i, size_t n, size_t npoints) {
+  if(v>0) fprintf(stderr, "Progress: %5.1f%%",100.0 * (zpfloat) start / (zpfloat)inend);
   if(v>1) {
-    fprintf(stderr, "  ---  Block: %d / %d  ---  Data left: %luKB   ",
-            (int)(i + 1), (int)(npoints + 1),(unsigned long)((inend - start)/1024));
+    fprintf(stderr, "  ---  Block: %4d / %d [%04d]  ---  Data Left: %5luKB          ",
+            (int)(i + 1), (int)(npoints + 1), (int)(n + 1), (unsigned long)((inend - start)/1024));
     if(v>2) {
       fprintf(stderr,"\n");
     } else {
@@ -1423,6 +1423,17 @@ static void *threading(void *a) {
 
 }
 
+typedef struct ZopfliBlockInfo {
+
+  size_t pos;
+
+  size_t start;
+
+  size_t end;
+
+  size_t len;
+} ZopfliBlockInfo;
+
 static void ZopfliUseThreads(const ZopfliOptions* options,
                                ZopfliLZ77Store* lz77,
                                const unsigned char* in,
@@ -1455,6 +1466,10 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   ZopfliThread *t = malloc(sizeof(ZopfliThread) * numthreads);
   ZopfliLZ77Store *tempstore = malloc(sizeof(ZopfliLZ77Store) * (bkend+1));
   ZopfliBestStats* statsdb = malloc(sizeof(ZopfliBestStats) * numthreads);
+
+  ZopfliBlockInfo *blockinfo     = malloc(sizeof(ZopfliBlockInfo) * (bkend+1));
+  ZopfliBlockInfo *tempblockinfo = malloc(sizeof(ZopfliBlockInfo));
+  size_t processed = 0;
 
 #ifndef _WIN32
   for(i=0;i<options->affamount;++i) {
@@ -1494,10 +1509,31 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   }
 
   for (i = bkstart; i <= bkend; ++i) {
-    size_t start = i == 0 ? instart : (*splitpoints_uncompressed)[i - 1];
-    size_t end = i == bkend ? inend : (*splitpoints_uncompressed)[i];
+    blockinfo[i].pos   = i;
+    blockinfo[i].start = i == 0 ? instart : (*splitpoints_uncompressed)[i - 1];
+    blockinfo[i].end   = i == bkend ? inend : (*splitpoints_uncompressed)[i];
+    blockinfo[i].len   = blockinfo[i].end - blockinfo[i].start;
+  }
+
+
+  for(i = bkstart+1; i < bkend; ++i) {
+    for(n = bkstart; n < bkend - i; ++n) {
+      if(blockinfo[n].len < blockinfo[n + 1].len) {
+        *tempblockinfo   = blockinfo[n];
+        blockinfo[n]     = blockinfo[n + 1];
+        blockinfo[n + 1] = *tempblockinfo;
+      }
+    }
+  }
+  free(tempblockinfo);
+
+
+  for (i = bkstart; i <= bkend; ++i) {
+    size_t start = blockinfo[i].start;
+    size_t end   = blockinfo[i].end;
     size_t blocksize = 0;
     unsigned long blockcrc = 0;
+    processed += instart + blockinfo[i].len;
     if((options->mode & 0x0100) && !(options->numthreads == 0 && (options->mode & 0x0010))) {
       blocksize = end - start;
       blockcrc = CRC(in + start, blocksize);
@@ -1533,8 +1569,8 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
                 if(calci>options->numiterations) calci=options->numiterations;
               }
               thrprogress = (int)(((zfloat)t[showthread].iterations.iteration / (zfloat)calci) * 100);
-              usleep(333333);
-              fprintf(stderr,"%3d%% THR %d | BLK %d | BST %d: %d b | ITR %d: %d b      \r",
+              usleep(250000);
+              fprintf(stderr,"%3d%% THR %2d | BLK %4d | BST %5d: %d b | ITR %5d: %d b   \r",
                       thrprogress, showthread, ((int)t[showthread].iterations.block+1),
                       t[showthread].iterations.bestiteration, t[showthread].iterations.bestcost,
                       t[showthread].iterations.iteration, t[showthread].iterations.cost);
@@ -1544,7 +1580,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
                 showthread=0;
               showcntr=0;
             }
-            if(showcntr>3) {
+            if(showcntr>4) {
               if(threadsrunning>1) {
                 ++showthread;
                 if(showthread>=numthreads)
@@ -1582,13 +1618,13 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             t[threnum].in = in;
             t[threnum].cost = 0;
             t[threnum].allstatscontrol = 0;
-            t[threnum].iterations.block = i;
+            t[threnum].iterations.block = blockinfo[i].pos;
             t[threnum].iterations.bestcost = 0;
             t[threnum].iterations.cost = 0;
             t[threnum].iterations.iteration = 0;
             t[threnum].iterations.bestiteration = 0;
             t[threnum].is_running = 1;
-            PrintProgress(v, start, inend, i, bkend);
+            PrintProgress(v, processed, inend, i, blockinfo[i].pos, bkend);
             if(options->numthreads) {
 #ifdef _WIN32
               thr[threnum] = CreateThread(NULL, 0, threading, (void *)&t[threnum], 0, NULL);
@@ -1667,6 +1703,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
     } while(threadsrunning>0 && neednext==0);
   }
 
+  free(blockinfo);
   free(statsdb);
   free(blockdone);
   free(tempstore);
