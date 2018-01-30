@@ -1516,8 +1516,8 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   }
 
 
-  for(i = bkstart+1; i < bkend; ++i) {
-    for(n = bkstart; n < bkend - i; ++n) {
+  for(i = bkstart+1; i <= bkend; ++i) {
+    for(n = bkstart; n <= bkend - i; ++n) {
       if(blockinfo[n].len < blockinfo[n + 1].len) {
         *tempblockinfo   = blockinfo[n];
         blockinfo[n]     = blockinfo[n + 1];
