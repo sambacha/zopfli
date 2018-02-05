@@ -1,8 +1,8 @@
 CC = gcc
 CXX = g++
 
-CFLAGS = -W -Wall -Wextra -ansi -pedantic -lm -pthread -Wno-unused-function
-CXXFLAGS = -W -Wall -Wextra -ansi -pedantic -std=gnu++11 -pthread
+CFLAGS = -W -Wall -Wextra -Wcast-align -Wno-unused-function -ansi -pedantic -lm -pthread -Wno-unused-function
+CXXFLAGS = -W -Wall -Wextra -Wcast-align -Wno-unused-function -ansi -pedantic -std=gnu++11 -pthread
 
 #It's recommended to double-compile zopfli by first adding -fprofile-generate, running it on
 #some file with 5000 iterations and using master thread only (--t0). After initial run
@@ -47,7 +47,7 @@ zopfliavx:
 	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEFOPT) $(CAVXFLAGS) $(ZADDOPT) -o zopfliA
 
 zopflineon:
-	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopfliN
+	$(CC) -static -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopfliN
 
 zopflidebug:
 	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) $(ZDEBUG) -o zopfliD
@@ -90,7 +90,7 @@ zopflipngavx:
 
 zopflipngneon:
 	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(CFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -c
-	$(CXX) -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopflipngN
+	$(CXX) -static -static-libgcc -D NLIB $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CXXFLAGS) $(ZARMOPT) $(CNEONFLAGS) $(ZADDOPT) -o zopflipngN
 
 zopflipngdebug:
 	$(CC) -D NLIB $(ZOPFLILIB_SRC) $(CFLAGS) $(ZDEBUG) -c

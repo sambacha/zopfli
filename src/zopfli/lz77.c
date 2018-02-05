@@ -300,6 +300,13 @@ static const unsigned char* GetMatch(const unsigned char* scan,
                                      const unsigned char* end,
                                      const unsigned char* safe_end) {
 
+#ifdef __arm__
+  /* Fixes random crashes on ARM devices */
+  while (scan < safe_end && memcmp(scan, match, 4) == 0) {
+    scan += 4;
+    match += 4;
+  }
+#else
   if (sizeof(size_t) == 8) {
     /* 8 checks at once per array bounds check (size_t is 64-bit). */
     while (scan < safe_end && *((size_t*)scan) == *((size_t*)match)) {
@@ -322,6 +329,7 @@ static const unsigned char* GetMatch(const unsigned char* scan,
       scan++; match++;
     }
   }
+#endif
 
   /* The remaining few bytes. */
   while (scan != end && *scan == *match) {
