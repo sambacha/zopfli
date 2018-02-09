@@ -322,10 +322,10 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
       for(i=0;i<npoints2;++i) {
         ZOPFLI_APPEND_DATA(splitpoints2[i],splitpoints,npoints);
       }
-      free(splitpoints2);
-      splitpoints2=0;
-      npoints2 = 0;
-    } 
+    }
+    free(splitpoints2);
+    splitpoints2=0;
+    npoints2 = 0;
     if(evalsplit) ++minrec;
     if(minrec > 127) evalsplit = 0;
   } while(evalsplit);
