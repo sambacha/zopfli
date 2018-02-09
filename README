@@ -150,7 +150,12 @@ Description of new commands list in Zopfli KrzYmod:
    This switch provides maximum recursion per data block for block splitter.
    It is controlled by --bsr switch.
 
-18. --bsr#
+18. --testrec
+
+   Tries recursion settings of 2 - 128 in splitter before compression to find
+   split points which provide lower estimate cost.
+
+19. --bsr#
 
    Block splitting recursion. Changing this options will alter block splitting
    model. The default is 9 and this is another try&error option. Setting this
@@ -162,7 +167,7 @@ Description of new commands list in Zopfli KrzYmod:
    In case of default value of 9 it will split blocks to (size of data / 9) parts
    for searching and will not split block any further if it's < 9 bytes.
 
-19. --mls#
+20. --mls#
 
    This command alters the GetLengthScore function. Changing this parameter
    alters block splitting decissions as well as initial compression run before
@@ -171,19 +176,27 @@ Description of new commands list in Zopfli KrzYmod:
    is 1024. When best stats are loaded from file (--statsdb) the initial run
    in dynamic block iterating is skipped so it has no impact on that block.
 
-20. --nosplitlast
+21. --sb#
+
+   Sets minimum block size in bytes under which slower byte-by-byte analysis is
+   performed to find more split points instead of faster recursive search.
+   The default value is 1024 as per original. Setting this value higher may
+   result in better split points precission but will increase the time spent on splitter
+   especially when --slowsplit is used as well.
+
+22. --nosplitlast
 
    Disables splitting last after compression. This mode is useful when custom split
    points need to stay the same. For example to huffmix results later.
 
-21. --pass#
+23. --pass#
 
    Multiple splitting last & recompression attempts to check if resulting deflate stream
    gets smaller. It will run # times or until no size was reduced in the last recompression
    attempt. This mode doesn't work when --nosplitlast is used, or when the compressed input
    is only 1 block long.
 
-22. --si#
+24. --si#
 
    Stats to laststats in weight calculations. Zopfli by default takes 100% of current
    generated statistics with 50% of the ones from previous run before randomizing them.
@@ -191,18 +204,18 @@ Description of new commands list in Zopfli KrzYmod:
    Maximum allowed number is 149, making current stats use 149% and last stats 1%.
    This has an impact on iterating proggress.
 
-23. --cwmc
+25. --cwmc
 
    Use Complementary-Multiply-With-Carry random number generator instead of the default
    Multiply-With-Carry. Both algorithms are made by G. Marsaglia.
    This provides different iteration progress.
    To read more: https://en.wikipedia.org/wiki/Multiply-with-carry
 
-24. --rm#
+26. --rm#
    Random number generator modulo. By default Zopfli uses 3. Using different numbers
    (like: 5) can find best stats sooner or better on certain data.
 
-25. --rw# and --rz#
+27. --rw# and --rz#
 
    Initial random W and Z for iterations. These parameters are 1 for W and 2 for Z
    by default and they are locked in original Zopfli. They are used to init
@@ -218,7 +231,7 @@ Description of new commands list in Zopfli KrzYmod:
    1 bit reduction when changing these parameters on --mui999 when previously
    the file was created doing as many as 99,999 unsucessful iteration.
 
-26. --statsdb
+28. --statsdb
 
    Use Best Statistics / block directory/file based database. Files are stored
    in ZopfliDB directory that has this structure:
@@ -237,7 +250,7 @@ Description of new commands list in Zopfli KrzYmod:
    This feature replaces restore points as files are smaller and it's possible to
    speed up compression on various streams if above criteria is met.
 
-27. --t#
+29. --t#
 
    Use # threads for compression. Limited by number of blocks in stream as each
    block is sent to a separate thread for compression. Most useful if there are many
@@ -246,7 +259,7 @@ Description of new commands list in Zopfli KrzYmod:
    out-of-order blocks returned by threads that are then processed and merged when they
    follow in-order block returned by given thread.
 
-28. --aff#
+30. --aff#
    Specify affinity masks to use per thread. Use , as a separator. For example:
    --aff3,24,100 will use CPU0+1 for thread 0, CPU3+4 for thread 1 and CPU2+5+6
    for thread 2. The process will repeat itself in case more than 3 threads are used.
@@ -255,11 +268,11 @@ Description of new commands list in Zopfli KrzYmod:
    In case you have Ryzen 1600X and want to use 12 threads, specify it as:
    --aff63,4032
 
-29. --idle
+31. --idle
 
    Run Zopfli in lowest priority to not slow down other processes.
 
-30. --v#
+32. --v#
 
    This option is formerly known as just -v and it extends control over Zopfli
    verbosity. The default is 2 and it can be set from 0 (quiet) to 5 (most verbose):
@@ -272,7 +285,6 @@ Description of new commands list in Zopfli KrzYmod:
          and treesize (same functionality as -v in original release),
    * 5 - additionally display current iteration being processed using same line until
          bit reduction occurs, and Restore Points information.
-   * 6 - additionally display debug mode of block splitting decissions.
 
 ------------------------------------
 

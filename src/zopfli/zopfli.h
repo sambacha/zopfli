@@ -108,7 +108,8 @@ typedef struct ZopfliOptions {
   0x0040 - Disable splitting after compression,
   0x0080 - Use expensive fixed block calculations in splitter,
   0x0100 - Use File-based best stats DB,
-  0x0200 - Use max recursion per data --bsr is the bytes limit then.
+  0x0200 - Use max recursion per data --bsr is the bytes limit then,
+  0x0400 - Test recursion of 2 - 128 before compression.
   */
   unsigned long mode;
 
@@ -135,6 +136,13 @@ typedef struct ZopfliOptions {
   */
   size_t* threadaffinity;
   size_t affamount;
+
+  /*
+  Sets a minimum data size in bytes under which faster recursive
+  search in splitter is replaced by expensive byte by byte
+  analysis. Default is 1024 as per original.
+  */
+  size_t smallestblock;
 
 } ZopfliOptions;
 

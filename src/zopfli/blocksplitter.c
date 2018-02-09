@@ -56,15 +56,17 @@ Also prints some garbage at verbosity level 6+.
 */
 static size_t FindMinimum(FindMinimumFun f, void* context,
                           size_t start, size_t end,
-                          zfloat* smallest) {
+                          zfloat* smallest, size_t minrec) {
   SplitCostContext* c = (SplitCostContext*)context;
   size_t size = end - start;
-  if (size < (((c->options->mode & 0x0200) == 0x0200)?c->options->findminimumrec:1024)) {
+  if (size < c->options->smallestblock) {
     zfloat best = ZOPFLI_LARGE_FLOAT;
     size_t result = start;
     size_t i;
+    size_t j = end - start;
     for (i = start; i < end; i++) {
       zfloat v = f(i, context);
+      if(c->options->verbose>0) fprintf(stderr,"%d \r",(int)(j--));
       if (v < best) {
         best = v;
         result = i;
@@ -76,10 +78,10 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
     /* Try to find minimum faster by recursively checking multiple points. */
     size_t max_recursion = 
       (c->options->mode & 0x0200) == 0x0200?
-        size/c->options->findminimumrec<2?
+        size/minrec<2?
           2
-          :size/c->options->findminimumrec
-        :c->options->findminimumrec;
+          :size/minrec
+        :minrec;
     size_t i;
     size_t *p = (size_t*)malloc(sizeof(*p) * max_recursion);
     zfloat *vp = (zfloat*)malloc(sizeof(*vp) * max_recursion);
@@ -94,7 +96,7 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
       for (i = 0; i < max_recursion; i++) {
         p[i] = start + (i + 1) * ((end - start) / (max_recursion + 1));
         vp[i] = f(p[i], context);
-        if(c->options->verbose>5) fprintf(stderr,"%lu   \r",(unsigned long)(max_recursion - i));
+        if(c->options->verbose>0) fprintf(stderr,"%d \r",(int)(max_recursion - i));
       }
       besti = 0;
       best = vp[0];
@@ -112,7 +114,6 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
 
       pos = p[besti];
       lastbest = best;
-      if(c->options->verbose>5) fprintf(stderr," [%lu] Best: %.0f   \n",(unsigned long)pos,(zpfloat)best);
     }
     *smallest = lastbest;
     free(p);
@@ -248,55 +249,86 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
                           const ZopfliLZ77Store* lz77, size_t maxblocks,
                           size_t** splitpoints, size_t* npoints) {
   size_t lstart, lend;
-  size_t llpos = 0;
-  size_t numblocks = 1;
+  size_t llpos;
+  size_t numblocks;
+  size_t evalsplit = (options->mode & 0x0400) == 0x0400? 1 : 0;
+  size_t minrec = evalsplit?2:options->findminimumrec;
   unsigned char* done;
-  zfloat splitcost, origcost;
+  zfloat splitcost;
+  zfloat origcost;
+  zfloat totalcost;
+  zfloat totalcost2 = ZOPFLI_LARGE_FLOAT;
+  size_t* splitpoints2 = 0;
+  size_t npoints2 = 0;
 
   if (lz77->size < 10) return;  /* This code fails on tiny files. */
+ 
+  do {
+    done = (unsigned char*)calloc(lz77->size, sizeof(unsigned char));
+    if (!done) exit(-1); /* Allocation failed. */
+    lstart = 0;
+    lend = lz77->size;
+    totalcost = 0;
+    numblocks = 1;
+    llpos = 0;
+    for (;;) {
+      SplitCostContext c;
 
-  done = (unsigned char*)calloc(lz77->size, sizeof(unsigned char));
-  if (!done) exit(-1); /* Allocation failed. */
+      if (maxblocks > 0 && numblocks >= maxblocks) {
+        break;
+      }
 
-  lstart = 0;
-  lend = lz77->size;
-  for (;;) {
-    SplitCostContext c;
+      c.lz77 = lz77;
+      c.options = options;
+      c.start = lstart;
+      c.end = lend;
+      assert(lstart < lend);
+      llpos = FindMinimum(SplitCost, &c, lstart + 1, lend, &splitcost, minrec);
 
-    if (maxblocks > 0 && numblocks >= maxblocks) {
-      break;
+      assert(llpos > lstart);
+      assert(llpos < lend);
+
+      origcost = EstimateCost(options, lz77, lstart, lend);
+      totalcost += origcost;
+
+      if (splitcost > origcost || llpos == lstart + 1 || llpos == lend) {
+        done[lstart] = 1;
+      } else {
+        AddSorted(llpos, &splitpoints2, &npoints2);
+        ++numblocks;
+        if(options->verbose>0) 
+          fprintf(stderr,"      [BSR: %d] Initializing blocks: %d    \r",(int)minrec,(int)(numblocks));
+      }
+
+      if (!FindLargestSplittableBlock(
+          lz77->size, done, splitpoints2, npoints2, &lstart, &lend)) {
+        break;  /* No further split will probably reduce compression. */
+      }
+
+      if (lend - lstart < 10) {
+        break;
+      }
     }
-
-    c.lz77 = lz77;
-    c.options = options;
-    c.start = lstart;
-    c.end = lend;
-    assert(lstart < lend);
-    llpos = FindMinimum(SplitCost, &c, lstart + 1, lend, &splitcost);
-
-    assert(llpos > lstart);
-    assert(llpos < lend);
-
-    origcost = EstimateCost(options, lz77, lstart, lend);
-
-    if (splitcost > origcost || llpos == lstart + 1 || llpos == lend) {
-      done[lstart] = 1;
-    } else {
-      AddSorted(llpos, splitpoints, npoints);
-      ++numblocks;
-      if(options->verbose>0 && options->verbose<6) 
-        fprintf(stderr,"Initializing blocks: %lu    \r",(unsigned long)(numblocks));
-    }
-
-    if (!FindLargestSplittableBlock(
-        lz77->size, done, *splitpoints, *npoints, &lstart, &lend)) {
-      break;  /* No further split will probably reduce compression. */
-    }
-
-    if (lend - lstart < 10) {
-      break;
-    }
-  }
+    free(done);
+    if(totalcost < totalcost2) {
+      size_t i;
+      if(options->verbose>0) {
+        fprintf(stderr, "      [BSR: %d] %d < %d                      \n",(int)minrec,(int)totalcost,(int)totalcost2);
+      }
+      totalcost2 = totalcost;
+      free(*splitpoints);
+      *splitpoints = 0;
+      *npoints = 0;
+      for(i=0;i<npoints2;++i) {
+        ZOPFLI_APPEND_DATA(splitpoints2[i],splitpoints,npoints);
+      }
+      free(splitpoints2);
+      splitpoints2=0;
+      npoints2 = 0;
+    } 
+    if(evalsplit) ++minrec;
+    if(minrec > 127) evalsplit = 0;
+  } while(evalsplit);
 
   if (options->verbose>3) {
     PrintBlockSplitPoints(lz77, *splitpoints, *npoints);
@@ -306,8 +338,6 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
     fprintf(stderr, "Total blocks: %lu                 \n\n",(unsigned long)numblocks);
   }
 
-
-  free(done);
 }
 
 void ZopfliBlockSplit(const ZopfliOptions* options,

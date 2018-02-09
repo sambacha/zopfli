@@ -708,10 +708,14 @@ int main(int argc, char* argv[]) {
     else if (StringsEqual(arg, "--slowsplit")) options.mode |= 0x0080;
     else if (StringsEqual(arg, "--statsdb")) options.mode |= 0x0100;
     else if (StringsEqual(arg, "--maxrec")) options.mode |= 0x0200;
+    else if (StringsEqual(arg, "--testrec")) options.mode |= 0x0400;
     else if (StringsEqual(arg, "--dir")) binoptions.usescandir = 1;
     else if (StringsEqual(arg, "--aas")) binoptions.additionalautosplits = 1;
-    else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 's' && arg[3] == 'i'
-             && arg[4] >= '0' && arg[4] <= '9') {
+    else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 's' && arg[3] == 'b'
+          && arg[4] >= '0' && arg[4] <= '9') {
+      options.smallestblock = atoi(arg + 4);
+    } else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 's' && arg[3] == 'i'
+            && arg[4] >= '0' && arg[4] <= '9') {
       options.statimportance = atoi(arg + 4);
       if (options.statimportance > 149) options.statimportance = 149;
       else if (options.statimportance < 1) options.statimportance = 1;
@@ -837,9 +841,11 @@ int main(int argc, char* argv[]) {
           "  --bsr#        block splitting recursion (min: 2, d: 9)\n"
           "  --mb#         maximum blocks, 0 = unlimited (d: 15)\n"
           "  --mls#        maximum length score (d: 1024)\n"
+          "  --sb#         byte-by-byte search if block < # (d: 1024)\n"
           "  --maxrec      use maximum recursion possible\n"
           "  --nosplitlast don't use last splitting after compression\n"
-          "  --slowsplit   always use expensive fixed block calculations\n\n");
+          "  --slowsplit   always use expensive fixed block calculations\n"
+          "  --testrec     test recursion of 2-128\n\n");
       fprintf(stderr,
           " ******* MANUAL BLOCK SPLITTER *******\n"
           "  --b#          block size in bytes\n"
