@@ -252,7 +252,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
   size_t llpos;
   size_t numblocks;
   size_t evalsplit = (options->mode & 0x0400) == 0x0400? 1 : 0;
-  size_t minrec = evalsplit?2:options->findminimumrec;
+  size_t minrec = evalsplit?(options->mode & 0x0200) == 0x0200?1048576:2:options->findminimumrec;
   unsigned char* done;
   zfloat splitcost;
   zfloat origcost;
@@ -326,8 +326,15 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
     free(splitpoints2);
     splitpoints2=0;
     npoints2 = 0;
-    if(evalsplit) ++minrec;
-    if(minrec > 127) evalsplit = 0;
+    if(evalsplit) {
+      if((options->mode & 0x0200) == 0x0200) {
+        minrec = minrec >> 1;
+        if(minrec == 512) evalsplit = 0;
+      } else {
+        ++minrec;
+        if(minrec == 128) evalsplit = 0;
+      }
+    }
   } while(evalsplit);
 
   if (options->verbose>3) {
