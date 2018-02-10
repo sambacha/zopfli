@@ -153,7 +153,9 @@ Description of new commands list in Zopfli KrzYmod:
 18. --testrec
 
    Tries recursion settings of 2 - 128 in splitter before compression to find
-   split points which provide lower estimate cost.
+   split points which provide lower estimate cost. When --maxrec is used it
+   will try 1M, 512K, 256K, 128K, 64K, 32K, 16K, 8K, 4K, 2K and 1K bytes
+   splits.
 
 19. --bsr#
 
