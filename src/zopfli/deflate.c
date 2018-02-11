@@ -923,7 +923,7 @@ zfloat ZopfliCalculateBlockSize(const ZopfliOptions* options,
       ZopfliInitLZ77Store(lz77->data, &store);
       ZopfliInitBlockState(options2, instart, inend, 1, &s);
       mui = options->slowdynmui;
-      result += ZopfliLZ77Optimal(&s, lz77->data, instart, inend, &store, &iterations, NULL, &iter);
+      result = ZopfliLZ77Optimal(&s, lz77->data, instart, inend, &store, &iterations, NULL, &iter);
       mui = 0;
       free(options2);
       ZopfliCleanBlockState(&s);
