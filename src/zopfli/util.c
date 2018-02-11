@@ -40,4 +40,5 @@ void ZopfliInitOptions(ZopfliOptions* options) {
   options->threadaffinity = NULL;
   options->affamount = 0;
   options->smallestblock = 1024;
+  options->testrecmui = 0;
 }

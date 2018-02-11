@@ -144,6 +144,13 @@ typedef struct ZopfliOptions {
   */
   size_t smallestblock;
 
+  /*
+  How many unsuccessful iterations to use for LZ77Optimal in splitter
+  which will only be used if that number is greater than 0 in
+  --testrec command.
+  */
+  size_t testrecmui;
+
 } ZopfliOptions;
 
 /*

@@ -708,11 +708,16 @@ int main(int argc, char* argv[]) {
     else if (StringsEqual(arg, "--slowsplit")) options.mode |= 0x0080;
     else if (StringsEqual(arg, "--statsdb")) options.mode |= 0x0100;
     else if (StringsEqual(arg, "--maxrec")) options.mode |= 0x0200;
-    else if (StringsEqual(arg, "--testrec")) options.mode |= 0x0400;
     else if (StringsEqual(arg, "--dir")) binoptions.usescandir = 1;
     else if (StringsEqual(arg, "--aas")) binoptions.additionalautosplits = 1;
-    else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 's' && arg[3] == 'b'
-          && arg[4] >= '0' && arg[4] <= '9') {
+    else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 't' && arg[3] == 'e'
+          && arg[4] == 's' && arg[5] == 't' && arg[6] == 'r' && arg[7] == 'e'
+          && arg[8] == 'c') {
+      options.mode |= 0x0400;
+      if(arg[9] >= '0' && arg[9] <= '9')
+        options.testrecmui = atoi(arg + 9);
+    } else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 's' && arg[3] == 'b'
+            && arg[4] >= '0' && arg[4] <= '9') {
       options.smallestblock = atoi(arg + 4);
     } else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 's' && arg[3] == 'i'
             && arg[4] >= '0' && arg[4] <= '9') {
@@ -845,7 +850,7 @@ int main(int argc, char* argv[]) {
           "  --maxrec      use maximum recursion possible\n"
           "  --nosplitlast don't use last splitting after compression\n"
           "  --slowsplit   always use expensive fixed block calculations\n"
-          "  --testrec     test recursion of 2-128\n\n");
+          "  --testrec#    test recursion, # - LZ77Optimal with this mui\n\n");
       fprintf(stderr,
           " ******* MANUAL BLOCK SPLITTER *******\n"
           "  --b#          block size in bytes\n"
