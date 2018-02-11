@@ -265,15 +265,13 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
 
   if((options->mode & 0x0400) == 0x0400) {
     evalsplit = 1;
+    minrec = 2;
     if((options->mode & 0x0200) == 0x0200) {
-      minrec = 1024;
       for(;;) {
         if(minrec>lz77->size)
           break;
         minrec = minrec << 1;
       }
-    } else {
-      minrec = 2;
     }
   } else {
     evalsplit = 0;
@@ -354,7 +352,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
     npoints2 = 0;
     if(evalsplit) {
       if((options->mode & 0x0200) == 0x0200) {
-        if(minrec == 128) evalsplit = 0;
+        if(minrec == 2) evalsplit = 0;
         minrec = minrec >> 1;
       } else {
         if(minrec == stopbsr) evalsplit = 0;
