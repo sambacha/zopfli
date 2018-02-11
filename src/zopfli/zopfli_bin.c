@@ -705,14 +705,21 @@ int main(int argc, char* argv[]) {
     else if (StringsEqual(arg, "--all")) options.mode |= 0x0010;
     else if (StringsEqual(arg, "--cmwc")) options.mode |= 0x0020;
     else if (StringsEqual(arg, "--nosplitlast")) options.mode |= 0x0040;
-    else if (StringsEqual(arg, "--slowsplit")) options.mode |= 0x0080;
+    else if (StringsEqual(arg, "--slowfix")) options.mode |= 0x0080;
     else if (StringsEqual(arg, "--statsdb")) options.mode |= 0x0100;
     else if (StringsEqual(arg, "--maxrec")) options.mode |= 0x0200;
     else if (StringsEqual(arg, "--dir")) binoptions.usescandir = 1;
     else if (StringsEqual(arg, "--aas")) binoptions.additionalautosplits = 1;
-    else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 't' && arg[3] == 'e'
-          && arg[4] == 's' && arg[5] == 't' && arg[6] == 'r' && arg[7] == 'e'
-          && arg[8] == 'c') {
+    else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 's' && arg[3] == 'l'
+          && arg[4] == 'o' && arg[5] == 'w' && arg[6] == 'd' && arg[7] == 'y'
+          && arg[8] == 'n') {
+      if(arg[9] >= '0' && arg[9] <= '9')
+        options.slowdynmui = atoi(arg + 9);
+      else
+        options.slowdynmui = 5;
+    } else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 't' && arg[3] == 'e'
+            && arg[4] == 's' && arg[5] == 't' && arg[6] == 'r' && arg[7] == 'e'
+            && arg[8] == 'c') {
       options.mode |= 0x0400;
       if(arg[9] >= '0' && arg[9] <= '9')
         options.testrecmui = atoi(arg + 9);
@@ -846,10 +853,12 @@ int main(int argc, char* argv[]) {
           "  --bsr#        block splitting recursion (min: 2, d: 9)\n"
           "  --mb#         maximum blocks, 0 = unlimited (d: 15)\n"
           "  --mls#        maximum length score (d: 1024)\n"
-          "  --sb#         byte-by-byte search if block < # (d: 1024)\n"
-          "  --maxrec      use maximum recursion possible\n"
-          "  --nosplitlast don't use last splitting after compression\n"
-          "  --slowsplit   always use expensive fixed block calculations\n"
+          "  --sb#         byte-by-byte search when lz77 size < # (d: 1024)\n"
+          "  --maxrec      use recursion of lz77 size / bsr times\n"
+          "  --nosplitlast don't use splitting last\n"
+          "  --slowdyn#    LZ77 Optimal in splitter, # - mui\n"
+          "  --slowfix     always use expensive fixed block calculations\n");
+      fprintf(stderr,
           "  --testrec#    test recursion, # - LZ77Optimal with this mui\n\n");
       fprintf(stderr,
           " ******* MANUAL BLOCK SPLITTER *******\n"

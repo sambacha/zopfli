@@ -882,7 +882,8 @@ void PrintSummary(unsigned long insize, unsigned long outsize, unsigned long def
 
 zfloat ZopfliCalculateBlockSize(const ZopfliOptions* options,
                                 const ZopfliLZ77Store* lz77,
-                                size_t lstart, size_t lend, int btype) {
+                                size_t lstart, size_t lend, int btype,
+                                int expensivedyn) {
   unsigned ll_lengths[ZOPFLI_NUM_LL];
   unsigned d_lengths[ZOPFLI_NUM_D];
 
@@ -901,11 +902,33 @@ zfloat ZopfliCalculateBlockSize(const ZopfliOptions* options,
     result += CalculateBlockSymbolSize(
         ll_lengths, d_lengths, lz77, lstart, lend);
   } else {
-    int usebrotli = (options->mode & 0x0008) == 0x0008;
-    int revcounts = (options->mode & 0x0004) == 0x0004;
-    int ohh = (options->mode & 0x0002) == 0x0002;
-    result += GetDynamicLengths(lz77, lstart, lend, ll_lengths, d_lengths,
-                                usebrotli, revcounts, ohh);
+    if(expensivedyn == 0) {
+      int usebrotli = (options->mode & 0x0008) == 0x0008;
+      int revcounts = (options->mode & 0x0004) == 0x0004;
+      int ohh = (options->mode & 0x0002) == 0x0002;
+      result += GetDynamicLengths(lz77, lstart, lend, ll_lengths, d_lengths,
+                                  usebrotli, revcounts, ohh);
+    } else {
+      ZopfliBlockState s;
+      ZopfliLZ77Store store;
+      ZopfliIterations iterations;
+      ZopfliOptions* options2 = malloc(sizeof(ZopfliOptions)); 
+      unsigned iter = 0;
+      size_t instart = lz77->pos[lstart];
+      size_t inend = instart + ZopfliLZ77GetByteRange(lz77, lstart, lend);
+      memcpy(options2,options,sizeof(ZopfliOptions));
+      options2->numthreads = 0;
+      options2->numiterations = 0;
+      options2->verbose = 0;
+      ZopfliInitLZ77Store(lz77->data, &store);
+      ZopfliInitBlockState(options2, instart, inend, 1, &s);
+      mui = options->slowdynmui;
+      result += ZopfliLZ77Optimal(&s, lz77->data, instart, inend, &store, &iterations, NULL, &iter);
+      mui = 0;
+      free(options2);
+      ZopfliCleanBlockState(&s);
+      ZopfliCleanLZ77Store(&store);
+    }
   }
 
   return result;
@@ -913,11 +936,12 @@ zfloat ZopfliCalculateBlockSize(const ZopfliOptions* options,
 
 zfloat ZopfliCalculateBlockSizeAutoType(const ZopfliOptions* options,
                                         const ZopfliLZ77Store* lz77,
-                                        size_t lstart, size_t lend, int v) {
+                                        size_t lstart, size_t lend, int v,
+                                        int expensivedyn) {
   zfloat bestcost;
-  zfloat uncompressedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 0);
+  zfloat uncompressedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 0, 0);
   zfloat fixedcost = ZOPFLI_LARGE_FLOAT;
-  zfloat dyncost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 2);
+  zfloat dyncost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 2, expensivedyn);
   ZopfliLZ77Store fixedstore;
 
   /* Don't do the expensive fixed cost calculation for larger blocks that are
@@ -932,11 +956,11 @@ zfloat ZopfliCalculateBlockSizeAutoType(const ZopfliOptions* options,
     ZopfliInitLZ77Store(lz77->data, &fixedstore);
     ZopfliInitBlockState(options, instart, inend, 1, &s);
     ZopfliLZ77OptimalFixed(&s, lz77->data, instart, inend, &fixedstore);
-    fixedcost = ZopfliCalculateBlockSize(options, &fixedstore, 0, fixedstore.size, 1);
+    fixedcost = ZopfliCalculateBlockSize(options, &fixedstore, 0, fixedstore.size, 1, 0);
     ZopfliCleanBlockState(&s);
     ZopfliCleanLZ77Store(&fixedstore);
   } else {
-    fixedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 1);
+    fixedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 1, 0);
   }
   if (uncompressedcost < fixedcost && uncompressedcost < dyncost) {
     bestcost = uncompressedcost;
@@ -1080,9 +1104,9 @@ static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
                                  size_t expected_data_size,
                                  unsigned char* bp,
                                  unsigned char** out, size_t* outsize) {
-  zfloat uncompressedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 0);
-  zfloat fixedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 1);
-  zfloat dyncost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 2);
+  zfloat uncompressedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 0, 0);
+  zfloat fixedcost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 1, 0);
+  zfloat dyncost = ZopfliCalculateBlockSize(options, lz77, lstart, lend, 2, 0);
 
   /* Whether to perform the expensive calculation of creating an optimal block
   with fixed huffman tree to check if smaller. Only do this for small blocks or
@@ -1110,7 +1134,7 @@ static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
     ZopfliBlockState s;
     ZopfliInitBlockState(options, instart, inend, 1, &s);
     ZopfliLZ77OptimalFixed(&s, lz77->data, instart, inend, &fixedstore);
-    fixedcost = ZopfliCalculateBlockSize(options, &fixedstore, 0, fixedstore.size, 1);
+    fixedcost = ZopfliCalculateBlockSize(options, &fixedstore, 0, fixedstore.size, 1, 0);
     ZopfliCleanBlockState(&s);
   }
   if (uncompressedcost < fixedcost && uncompressedcost < dyncost) {
@@ -1380,7 +1404,7 @@ static void *threading(void *a) {
 
     ZopfliLZ77Optimal(&s, b->in, b->start, b->end, &store, &b->iterations,
                       &b->beststats, &b->startiteration);
-    tempcost = ZopfliCalculateBlockSizeAutoType(&o, &store, 0, store.size, 2);
+    tempcost = ZopfliCalculateBlockSizeAutoType(&o, &store, 0, store.size, 2, 0);
 
     ZopfliCleanBlockState(&s);
 
@@ -1845,7 +1869,7 @@ DLL_PUBLIC void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int f
       for (i = 0; i <= npoints2; i++) {
         size_t start = i == 0 ? 0 : splitpoints2[i - 1];
         size_t end = i == npoints2 ? lz77.size : splitpoints2[i];
-        totalcost2 += ZopfliCalculateBlockSizeAutoType(options, &lz77, start, end, 0);
+        totalcost2 += ZopfliCalculateBlockSizeAutoType(options, &lz77, start, end, 0, 0);
       }
 
       ++pass;

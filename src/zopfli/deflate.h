@@ -83,14 +83,16 @@ lend: end of block (not inclusive)
 */
 zfloat ZopfliCalculateBlockSize(const ZopfliOptions* options,
                                 const ZopfliLZ77Store* lz77,
-                                size_t lstart, size_t lend, int btype);
+                                size_t lstart, size_t lend, int btype,
+                                int expensivedyn);
 
 /*
 Calculates block size in bits, automatically using the best btype.
 */
 zfloat ZopfliCalculateBlockSizeAutoType(const ZopfliOptions* options,
                                         const ZopfliLZ77Store* lz77,
-                                        size_t lstart, size_t lend, int v);
+                                        size_t lstart, size_t lend, int v,
+                                        int expensivedyn);
 
 void DeflateBlock(const ZopfliOptions* options,
                          int btype, int final,

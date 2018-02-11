@@ -151,6 +151,13 @@ typedef struct ZopfliOptions {
   */
   size_t testrecmui;
 
+  /*
+  Use Optimal LZ77 in splitter which is the normal iteration mode
+  trying on split points before. If > 0 use this many maximum
+  unsuccessful iterations for every split point tried.
+  */
+  size_t slowdynmui;
+
 } ZopfliOptions;
 
 /*

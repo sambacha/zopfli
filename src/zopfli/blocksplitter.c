@@ -133,7 +133,7 @@ lend: end of block (not inclusive)
 static zfloat EstimateCost(const ZopfliOptions* options,
                            const ZopfliLZ77Store* lz77,
                            size_t lstart, size_t lend) {
-  return ZopfliCalculateBlockSizeAutoType(options, lz77, lstart, lend, 0);
+  return ZopfliCalculateBlockSizeAutoType(options, lz77, lstart, lend, 0, options->slowdynmui);
 }
 
 /*
@@ -380,7 +380,7 @@ void ZopfliBlockSplit(const ZopfliOptions* options,
   size_t* lz77splitpoints = 0;
   size_t nlz77points = 0;
   ZopfliLZ77Store store;
-  ZopfliOptions* options2 = malloc(sizeof(ZopfliOptions));;
+  ZopfliOptions* options2 = malloc(sizeof(ZopfliOptions));
 
   memcpy(options2,options,sizeof(ZopfliOptions));
 
@@ -425,6 +425,7 @@ void ZopfliBlockSplit(const ZopfliOptions* options,
   }
   assert(*npoints == nlz77points);
 
+  free(options2);
   free(lz77splitpoints);
   ZopfliCleanBlockState(&s);
   ZopfliCleanLZ77Store(&store);

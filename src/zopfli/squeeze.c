@@ -508,10 +508,10 @@ Here we allow user to define how many unsuccessful in size reduction
 iterations need to pass to give up in finding best parameters.
 (--mui switch).
 */
-void ZopfliLZ77Optimal(ZopfliBlockState *s,
-                       const unsigned char* in, size_t instart, size_t inend,
-                       ZopfliLZ77Store* store, ZopfliIterations* iterations,
-                       SymbolStats** foundbest, unsigned int* startiteration) {
+zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
+                         const unsigned char* in, size_t instart, size_t inend,
+                         ZopfliLZ77Store* store, ZopfliIterations* iterations,
+                         SymbolStats** foundbest, unsigned int* startiteration) {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
   unsigned short* length_array =
@@ -581,7 +581,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
     LZ77OptimalRun(s, in, instart, inend, &path, &pathsize,
                    length_array, GetCostStat, (void*)&stats,
                    &currentstore, h, costs);
-    cost = ZopfliCalculateBlockSize(s->options, &currentstore, 0, currentstore.size, 2);
+    cost = ZopfliCalculateBlockSize(s->options, &currentstore, 0, currentstore.size, 2, 0);
     if(s->options->numthreads) {
       iterations->iteration = i;
       iterations->cost = (int)cost;
@@ -649,6 +649,8 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   FreeStats(&stats);
   FreeStats(&laststats);
   FreeStats(&beststats);
+
+  return bestcost;
 }
 
 void ZopfliLZ77OptimalFixed(ZopfliBlockState *s,

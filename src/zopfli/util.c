@@ -41,4 +41,5 @@ void ZopfliInitOptions(ZopfliOptions* options) {
   options->affamount = 0;
   options->smallestblock = 1024;
   options->testrecmui = 0;
+  options->slowdynmui = 0;
 }
