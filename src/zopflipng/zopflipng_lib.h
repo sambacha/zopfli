@@ -151,6 +151,12 @@ typedef struct CZopfliPNGOptions {
   size_t* threadaffinity;
   size_t affamount;
 
+  size_t smallestblock;
+
+  size_t testrecmui;
+
+  size_t slowdynmui;
+
   int try_paletteless_size;
 
   int ga_population_size;
@@ -284,6 +290,8 @@ struct ZopfliPNGOptions {
   0x0040 - Disable splitting after compression,
   0x0080 - Use expensive fixed block calculations in splitter,
   0x0100 - Use File-based best stats DB.
+  0x0200 - Use max recursion per data --bsr is the bytes limit then,
+  0x0400 - Test recursion of 2 - 128 before compression.
   */
   unsigned long mode;
 
@@ -310,6 +318,27 @@ struct ZopfliPNGOptions {
   */
   size_t* threadaffinity;
   size_t affamount;
+
+  /*
+  Sets a minimum data size in bytes under which faster recursive
+  search in splitter is replaced by expensive byte by byte
+  analysis. Default is 1024 as per original.
+  */
+  size_t smallestblock;
+
+  /*
+  How many unsuccessful iterations to use for LZ77Optimal in splitter
+  which will only be used if that number is greater than 0 in
+  --testrec command.
+  */
+  size_t testrecmui;
+
+  /*
+  Use Optimal LZ77 in splitter which is the normal iteration mode
+  trying on split points before. If > 0 use this many maximum
+  unsuccessful iterations for every split point tried.
+  */
+  size_t slowdynmui;
 
   // Maximum size after which to try full color image compression on paletted image
   int try_paletteless_size;

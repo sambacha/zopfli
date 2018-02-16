@@ -875,7 +875,7 @@ void PrintSummary(unsigned long insize, unsigned long outsize, unsigned long def
       if(ratio_comp==0) ratio_comp=deflsize;
       fprintf(stderr, "Deflate size: %lu (%luK)\n", deflsize, deflsize / 1024);
     }
-    fprintf(stderr, "Ratio: %.3f%%\n\n", 100.0 * (zpfloat)ratio_comp / (zpfloat)insize);
+    fprintf(stderr, "Ratio: %.3f%%\n\n", 100.0 * (1 - (zpfloat)ratio_comp / (zpfloat)insize));
   }
 
 }
@@ -965,11 +965,11 @@ zfloat ZopfliCalculateBlockSizeAutoType(const ZopfliOptions* options,
   if (uncompressedcost < fixedcost && uncompressedcost < dyncost) {
     bestcost = uncompressedcost;
     if(v>2) fprintf(stderr, " > Uncompressed Block is smaller:"
-                            " %d bit < %d bit\n",(int)bestcost,(int)dyncost);
+                            " %lu bit < %lu bit\n",(unsigned long)bestcost,(unsigned long)dyncost);
   } else if (fixedcost < dyncost) {
     bestcost = fixedcost;
     if(v>2) fprintf(stderr, " > Fixed Tree Block is smaller:"
-                            " %d bit < %d bit\n",(int)bestcost,(int)dyncost);
+                            " %lu bit < %lu bit\n",(unsigned long)bestcost,(unsigned long)dyncost);
   } else {
     bestcost = dyncost;
   }
@@ -1141,7 +1141,7 @@ static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
     AddLZ77Block(options, 0, final, lz77, lstart, lend,
                  expected_data_size, bp, out, outsize);
     if (options->verbose>2) fprintf(stderr, " > Used Uncompressed Block(s):"
-                            " %d bit < %d bit\n",(int)uncompressedcost,(int)dyncost);
+                            " %lu bit < %lu bit\n",(unsigned long)uncompressedcost,(unsigned long)dyncost);
   } else if (fixedcost < dyncost) {
     if (expensivefixed) {
       AddLZ77Block(options, 1, final, &fixedstore, 0, fixedstore.size,
@@ -1151,7 +1151,7 @@ static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
                    expected_data_size, bp, out, outsize);
     }
     if (options->verbose>2) fprintf(stderr, " > Used Fixed Tree Block:"
-                            " %d bit < %d bit\n",(int)fixedcost,(int)dyncost);
+                            " %lu bit < %lu bit\n",(unsigned long)fixedcost,(unsigned long)dyncost);
   } else {
     AddLZ77Block(options, 2, final, lz77, lstart, lend,
                  expected_data_size, bp, out, outsize);
@@ -1304,8 +1304,25 @@ static int StatsDBSave(ZopfliBestStats* statsdb) {
 static void PrintProgress(int v, size_t start, size_t inend, size_t i, size_t n, size_t npoints) {
   if(v>0) fprintf(stderr, "Progress: %5.1f%%",100.0 * (zpfloat) start / (zpfloat)inend);
   if(v>1) {
-    fprintf(stderr, "  ---  Block: %4d / %d [%04d]  ---  Data Left: %5luKB          ",
-            (int)(i + 1), (int)(npoints + 1), (int)(n + 1), (unsigned long)((inend - start)/1024));
+    char buff[12];
+    char buff2[3];
+    size_t j;
+    unsigned long dleft = inend - start;
+    buff2[1] =  0 ;
+    if(dleft > 10238976) {
+      dleft /= 1048576;
+      buff2[0] = 'M';
+    } else if(dleft > 99999) {
+      dleft /= 1024;
+      buff2[0] = 'K';
+    } else {
+      buff2[0] = ' ';
+    }
+    sprintf(buff,"%5lu",dleft);
+    for(j = 0; buff[j] != 0; ++j) {}
+    sprintf(buff+j,"%sB",buff2);
+    fprintf(stderr, "  ---  Block: %4lu / %lu [%04lu]  ---  Data Left: %s          ",
+            (unsigned long)i, (unsigned long)(npoints + 1), (unsigned long)(n + 1), buff);
     if(v>2) {
       fprintf(stderr,"\n");
     } else {
@@ -1493,7 +1510,8 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
 
   ZopfliBlockInfo *blockinfo     = malloc(sizeof(ZopfliBlockInfo) * (bkend+1));
   ZopfliBlockInfo *tempblockinfo = malloc(sizeof(ZopfliBlockInfo));
-  size_t processed = 0;
+  size_t processedbytes = 0;
+  size_t processedblocks = 0;
 
 #ifndef _WIN32
   for(i=0;i<options->affamount;++i) {
@@ -1557,7 +1575,6 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
     size_t end   = blockinfo[i].end;
     size_t blocksize = 0;
     unsigned long blockcrc = 0;
-    processed += instart + blockinfo[i].len;
     if((options->mode & 0x0100) && !(options->numthreads == 0 && (options->mode & 0x0010))) {
       blocksize = end - start;
       blockcrc = CRC(in + start, blocksize);
@@ -1595,7 +1612,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               thrprogress = (int)(((zfloat)t[showthread].iterations.iteration / (zfloat)calci) * 100);
               usleep(250000);
               fprintf(stderr,"%3d%% THR %2d | BLK %4d | BST %5d: %d b | ITR %5d: %d b   \r",
-                      thrprogress, showthread, ((int)t[showthread].iterations.block+1),
+                      thrprogress, showthread, ((unsigned int)t[showthread].iterations.block+1),
                       t[showthread].iterations.bestiteration, t[showthread].iterations.bestcost,
                       t[showthread].iterations.iteration, t[showthread].iterations.cost);
             } else {
@@ -1648,7 +1665,6 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             t[threnum].iterations.iteration = 0;
             t[threnum].iterations.bestiteration = 0;
             t[threnum].is_running = 1;
-            PrintProgress(v, processed, inend, i, blockinfo[i].pos, bkend);
             if(options->numthreads) {
 #ifdef _WIN32
               thr[threnum] = CreateThread(NULL, 0, threading, (void *)&t[threnum], 0, NULL);
@@ -1680,6 +1696,9 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             threnum=0;
         }
         if(t[threnum].is_running==2) {
+          processedbytes += instart + t[threnum].end - t[threnum].start;
+          ++processedblocks;
+          PrintProgress(v, processedbytes, inend, processedblocks, t[threnum].iterations.block, bkend);
           if(options->mode & 0x0010) {
             (*bestperblock)[t[threnum].iterations.block] = t[threnum].bestperblock;
           }
@@ -1998,7 +2017,7 @@ DLL_PUBLIC void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int f
         ZOPFLI_APPEND_DATA(splitpoints_uncompressed[i],
                            &sp->splitpoints, &sp->npoints);
       }
-      if(v>2) fprintf(stderr, "%d ", (int)(splitpoints_uncompressed[i]));
+      if(v>2) fprintf(stderr, "%lu ", (unsigned long)(splitpoints_uncompressed[i]));
     }
     if(v>2) {
       fprintf(stderr, "(hex:");

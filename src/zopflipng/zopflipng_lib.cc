@@ -61,6 +61,9 @@ ZopfliPNGOptions::ZopfliPNGOptions()
   , statimportance(100)
   , threadaffinity(NULL)
   , affamount(0)
+  , smallestblock(1024)
+  , testrecmui(0)
+  , slowdynmui(0)
   , try_paletteless_size(2048)
   , ga_population_size(19)
   , ga_max_evaluations(0)
@@ -97,6 +100,9 @@ unsigned CustomPNGDeflate(unsigned char** out, size_t* outsize,
   options.statimportance    = png_options->statimportance;
   options.threadaffinity    = png_options->threadaffinity;
   options.affamount         = png_options->affamount;
+  options.smallestblock     = png_options->smallestblock;
+  options.testrecmui        = png_options->testrecmui;
+  options.slowdynmui        = png_options->slowdynmui;
 
   ZopfliDeflate(&options, 2 /* Dynamic */, 1, in, insize, &bp, out, outsize, 0);
 
@@ -1011,6 +1017,9 @@ extern "C" void CZopfliPNGSetDefaults(CZopfliPNGOptions* png_options) {
   png_options->statimportance           = opts.statimportance;
   png_options->threadaffinity           = opts.threadaffinity;
   png_options->affamount                = opts.affamount;
+  png_options->smallestblock            = opts.smallestblock;
+  png_options->testrecmui               = opts.testrecmui;
+  png_options->slowdynmui               = opts.slowdynmui;
   png_options->try_paletteless_size     = opts.try_paletteless_size;
   png_options->ga_population_size       = opts.ga_population_size;
   png_options->ga_max_evaluations       = opts.ga_max_evaluations;

@@ -5949,6 +5949,13 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
       }
       for(e = 0; (settings->ga.number_of_generations == 0 || e < settings->ga.number_of_generations) && e_since_best < settings->ga.number_of_stagnations; ++e)
       {
+        unsigned f = 0;
+        if(settings->verbose>2) {
+          f=e+(settings->ga.number_of_stagnations-e_since_best);
+          if(settings->ga.number_of_generations != 0 && f > settings->ga.number_of_generations) {
+            f = settings->ga.number_of_generations;
+          }
+        }
         /*resort rankings*/
         for(i = 1; i < population_size; ++i)
         {
@@ -5966,13 +5973,8 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
             fprintf(stderr,"\n");
         } else {
           ++e_since_best;
-          if(settings->verbose>2) {
-            unsigned f=e+(settings->ga.number_of_stagnations-e_since_best);
-            if(settings->ga.number_of_generations != 0 && f > settings->ga.number_of_generations) {
-              f = settings->ga.number_of_generations;
-            }
+          if(settings->verbose>2)
             fprintf(stderr,"GENETIC_ALGORITHM> %.1f%%\r",100.0 * (zpfloat)e / (zpfloat)f);
-          }
         }
         /*generate offspring*/
         for(c = 0; c < settings->ga.number_of_offspring; ++c)
@@ -6031,8 +6033,12 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
           zlib_compress(&dummy, &size[ranking[last - c]], out, h * (linebytes + 1), &zlibsettings);
           lodepng_free(dummy);
           total_size += size[ranking[last - c]];
-          if(settings->verbose>4)
-            fprintf(stderr,"GENETIC_ALGORITHM>        Generation %d: %d bytes      \r", e, (int)size[ranking[last - c]]);
+          if(settings->verbose>2) {
+            fprintf(stderr,"GENETIC_ALGORITHM> ");
+            if(settings->verbose>4)
+              fprintf(stderr,"       Generation %d: %d bytes      \r", e, (int)size[ranking[last - c]]);
+            fprintf(stderr,"%.1f%%\r",100.0 * (zpfloat)e / (zpfloat)f);
+          }
         }
       }
     }

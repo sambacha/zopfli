@@ -115,11 +115,11 @@ void ShowHelp() {
          " -------------------------------------\n"
          "           ZOPFLIPNG OPTIONS\n"
          " -------------------------------------\n\n"
-         "     # - number       * - string\n\n"
+         "     # - number       * - string       () - optional\n\n"
          " ************** GENERAL **************\n"
          "-d                         don't save any files (for benchmarking)\n"
          "-y                         always overwrite files\n"
-         "--v=[#]                    verbose level for zopfli (0-6, d:2)\n"
+         "--v=[#]                    verbose level for zopfli (0-5, d:2)\n"
          "--prefix=[*]               adds a prefix to output filenames\n"
          "--always_zopflify          always output the image even if bigger\n\n"
          " ********** COMPRESSION TIME *********\n"
@@ -131,9 +131,12 @@ void ShowHelp() {
          "--bsr=[#]                  block splitting recursion (min: 2, d: 9)\n"
          "--mb=[#]                   maximum blocks, 0 = unlimited (d: 15)\n"
          "--mls=[#]                  maximum length score (d: 1024)\n"
-         "--maxrec                   use maximum recursion possible\n"
-         "--slowsplit                use expensive fixed block calculations\n"
-         "--nosplitlast              don't use last splitting after compression\n\n"
+         "--sb=[#]                   byte-by-byte search when lz77 size < # (d: 1024)\n"
+         "--maxrec                   use recursion of lz77 size / bsr times\n"
+         "--nosplitlast              don't use splitting last\n"
+         "--slowdyn=[#]              LZ77 Optimal in splitter, # - mui\n"
+         "--slowfix                  always use expensive fixed block calculations\n"
+         "--testrec(=[#])            test recursion, # - LZ77Optimal with this mui\n"
          " ********** COMPRESSION MODE *********\n"
          "--zopfli_filters           use zopfli instead of zlib for every test\n"
          "--all                      use 16 combinations per block and take smallest size\n"
@@ -151,7 +154,7 @@ void ShowHelp() {
          "--palette_transparencies=[*] palette transparencies [isf] (d: all)\n"
          "--palette_orders=[*]       palette orders [pgdwn] (d: all)\n"
          "--try_paletteless_size=[#] don't use palette if < # (d: 2048)\n\n"
-         " ***** GENETIC ALGORITHM (=[#]) ******\n"
+         " *** GENETIC ALGORITHM + =[#] all ****\n"
          "--ga_population_size       number of genomes in pool. Default: 19\n"
          "--ga_max_evaluations       overall maximum number of evaluations (d: 0 - all)\n"
          "--ga_stagnate_evaluations  number of sequential evaluations (d: 15)\n"
@@ -272,12 +275,20 @@ int main(int argc, char *argv[]) {
         png_options.mode |= 0x0020;
       } else if (name == "--nosplitlast") {
         png_options.mode |= 0x0040;
-      } else if (name == "--slowsplit") {
+      } else if (name == "--slowfix") {
         png_options.mode |= 0x0080;
       } else if (name == "--statsdb") {
         png_options.mode |= 0x0100;
       } else if (name == "--maxrec") {
         png_options.mode |= 0x0200;
+      } else if (name == "--testrec") {
+        png_options.mode |= 0x0400;
+        if(num > 0) png_options.testrecmui = num;
+      } else if (name == "--slowdyn") {
+        if(num > 0) png_options.slowdynmui = num;
+        else        png_options.slowdynmui = 5;
+      } else if (name == "--sb") {
+        png_options.smallestblock = num;
       } else if (name == "--iterations") {
         png_options.num_iterations = num;
         png_options.num_iterations_large = num;

@@ -586,7 +586,7 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
       iterations->iteration = i;
       iterations->cost = (int)cost;
     } else if (s->options->verbose>4 || (s->options->verbose>2 && cost < bestcost)) {
-      fprintf(stderr, "Iteration %d: %d bit      \r", i, (int) cost);
+      fprintf(stderr, "Iteration %d: %lu bit      \r", i, (unsigned long)cost);
     }
     if (cost < bestcost) {
       if(s->options->numthreads) {
