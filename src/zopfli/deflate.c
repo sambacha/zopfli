@@ -1304,8 +1304,8 @@ static int StatsDBSave(ZopfliBestStats* statsdb) {
 static void PrintProgress(int v, size_t start, size_t inend, size_t i, size_t n, size_t npoints) {
   if(v>0) fprintf(stderr, "Progress: %5.1f%%",100.0 * (zpfloat) start / (zpfloat)inend);
   if(v>1) {
-    char buff[12];
-    char buff2[3];
+    char buff[24];
+    char buff2[2];
     size_t j;
     unsigned long dleft = inend - start;
     buff2[1] =  0 ;
