@@ -81,6 +81,15 @@ This value may be exceeded when master block is set too high.
 #define ZOPFLI_MAX_CACHE_MEMORY 524288000
 
 /*
+Realloc buffer used by ZopfliStoreLitLenDist and TraceBackwards to reduce
+amount of memory requests sent to system and stabilize memory usage. Assigned
+memory will have up to this many bytes overhead. This speeds up Zopfli on
+Odroid U3 (and possibly other systems as well) by 2%. Higher values will
+increase memory usage slightly and may reduce performance as well.
+*/
+#define ZOPFLI_REALLOC_BUFFER 1024
+
+/*
 limit the max hash chain hits for this hash value. This has an effect only
 on files where the hash value is the same very often. On these files, this
 gives worse compression (the value should ideally be 32768, which is the
