@@ -109,7 +109,7 @@ void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
   size_t llstart = ZOPFLI_NUM_LL * (origsize / ZOPFLI_NUM_LL);
   size_t dstart = ZOPFLI_NUM_D * (origsize / ZOPFLI_NUM_D);
 
-  if(store->buffer <= origsize) {
+  if(store->buffer == origsize) {
     store->buffer = origsize + ZOPFLI_REALLOC_BUFFER;
     store->ll_counts = realloc(store->ll_counts,(store->buffer + ZOPFLI_NUM_LL) * sizeof(store->ll_counts));
     store->d_counts  = realloc(store->d_counts,(store->buffer + ZOPFLI_NUM_D) * sizeof(store->d_counts));

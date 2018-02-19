@@ -87,7 +87,7 @@ memory will have up to this many bytes overhead. This speeds up Zopfli on
 Odroid U3 (and possibly other systems as well) by 2%. Higher values will
 increase memory usage slightly and may reduce performance as well.
 */
-#define ZOPFLI_REALLOC_BUFFER 1024
+#define ZOPFLI_REALLOC_BUFFER 16384
 
 /*
 limit the max hash chain hits for this hash value. This has an effect only
