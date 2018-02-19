@@ -379,19 +379,14 @@ static void TraceBackwards(size_t size, const unsigned short* length_array,
   {
     size_t cntr = 0;
     do {
-      ++cntr;
+      if(++cntr > *pathsizebuff) {
+        *pathsizebuff += ZOPFLI_REALLOC_BUFFER;
+        *path = realloc(*path,*pathsizebuff * sizeof(*path));
+      }
+      (*path)[(*pathsize)++] = length_array[index];
       assert(length_array[index] <= index);
       assert(length_array[index] <= ZOPFLI_MAX_MATCH);
       assert(length_array[index] != 0);
-    } while(index -= length_array[index]);
-    cntr += *pathsize;
-    if(*pathsizebuff < cntr) {
-      *pathsizebuff = cntr + ZOPFLI_REALLOC_BUFFER;
-      *path = realloc(*path,*pathsizebuff * sizeof(*path));
-    }
-    index = size;
-    do {
-      (*path)[(*pathsize)++] = length_array[index];
     } while(index -= length_array[index]);
   }
   /* Mirror result. */
