@@ -55,7 +55,7 @@ DLL_PUBLIC void ZopfliCompress(ZopfliOptions* options, const ZopfliFormat output
     fprintf(stderr,"Critical Error: one or more required pointers are NULL\n");
     exit(EXIT_FAILURE);
   } else {
-    ZopfliOptions* optionslib = (ZopfliOptions*)malloc(sizeof(*optionslib));
+    ZopfliOptions* optionslib = Zmalloc(sizeof(*optionslib));
     if(options == NULL) {
       ZopfliInitOptions(optionslib);
       optionslib->verbose = 0;

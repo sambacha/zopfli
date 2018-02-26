@@ -53,7 +53,7 @@ void ZopfliZipCompress(const ZopfliOptions* options,
   unsigned long cdirsize = 0;
   unsigned long cdiroffset;
   if(moredata==NULL) {
-    tempfilename = (char*)malloc(9 * sizeof(char*));
+    tempfilename = Zmalloc(9 * sizeof(char*));
     sprintf(tempfilename,"%08lx",crcvalue & 0xFFFFFFFFUL);
     infilename = tempfilename;
   } else {

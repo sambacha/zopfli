@@ -28,8 +28,8 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 void ZopfliLengthsToSymbols(const unsigned* lengths, size_t n, unsigned maxbits,
                             unsigned* symbols) {
-  size_t* bl_count = (size_t*)malloc(sizeof(size_t) * (maxbits + 1));
-  size_t* next_code = (size_t*)malloc(sizeof(size_t) * (maxbits + 1));
+  size_t* bl_count = Zmalloc(sizeof(size_t) * (maxbits + 1));
+  size_t* next_code = Zmalloc(sizeof(size_t) * (maxbits + 1));
   unsigned bits, i;
   unsigned code;
 

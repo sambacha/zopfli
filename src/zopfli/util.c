@@ -18,6 +18,8 @@ Author: lode.vandevenne@gmail.com (Lode Vandevenne)
 Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
+#include <stdio.h>
+#include <unistd.h>
 #include "defines.h"
 #include "util.h"
 #include "zopfli.h"
@@ -42,4 +44,52 @@ void ZopfliInitOptions(ZopfliOptions* options) {
   options->smallestblock = 1024;
   options->testrecmui = 0;
   options->slowdynmui = 0;
+}
+
+void *Zmalloc(size_t size) {
+  void *ptr;
+  if(size == 0) return NULL;
+  for(;;) {
+    ptr = malloc(size);
+    if(ptr == NULL) {
+      unsigned long x = (unsigned long)size;
+      fprintf(stderr," ERROR: Couldn't allocate %lu bytes of memory!\n",x);
+      sleep(60);
+    } else {
+      break;
+    }
+  }
+  return ptr;
+}
+
+void *Zcalloc(size_t ElemAm, size_t ElemSize) {
+  void *ptr;
+  if(ElemSize == 0 || ElemAm == 0) return NULL;
+  for(;;) {
+    ptr = calloc(ElemAm, ElemSize);
+    if(ptr == NULL) {
+      unsigned long x = (unsigned long)(ElemAm * ElemSize);
+      fprintf(stderr," ERROR: Couldn't allocate %lu bytes of memory!\n",x);
+      sleep(60);
+    } else {
+      break;
+    }
+  }
+  return ptr;
+}
+
+void *Zrealloc(void* ptr, size_t size) {
+  void *newPtr;
+  if(size == 0) return NULL;
+  for(;;) {
+    newPtr = realloc(ptr, size);
+    if(newPtr == NULL) {
+      unsigned long x = (unsigned long)size;
+      fprintf(stderr," ERROR: Couldn't allocate %lu bytes of memory!\n",x);
+      sleep(60);
+    } else {
+      break;
+    }
+  }
+  return newPtr;
 }

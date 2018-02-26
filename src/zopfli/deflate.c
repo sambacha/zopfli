@@ -577,7 +577,7 @@ static void OptimizeHuffmanForRle(unsigned int length, size_t* counts) {
   }
   /* 2) Let's mark all population counts that already can be encoded
   with an rle code.*/
-  good_for_rle = (unsigned char*)calloc(length, 1);
+  good_for_rle = Zcalloc(length, 1);
 
   /* Let's not spoil any of the existing good rle codes.
   Mark any seq of 0's that is longer than 5 as a good_for_rle.
@@ -703,10 +703,7 @@ static unsigned OptimizeHuffmanForRleBrotli(size_t length, size_t* counts) {
   }
     /* 2) Let's mark all population counts that already can be encoded
   with an rle code. */
-  good_for_rle = (unsigned char*)calloc(length, 1);
-  if (good_for_rle == NULL) {
-    return 0;
-  }
+  good_for_rle = Zcalloc(length, 1);
   {
     /* Let's not spoil any of the existing good rle codes.
     Mark any seq of 0's that is longer as 5 as a good_for_rle.
@@ -912,7 +909,7 @@ zfloat ZopfliCalculateBlockSize(const ZopfliOptions* options,
       ZopfliBlockState s;
       ZopfliLZ77Store store;
       ZopfliIterations iterations;
-      ZopfliOptions* options2 = malloc(sizeof(ZopfliOptions)); 
+      ZopfliOptions* options2 = Zmalloc(sizeof(ZopfliOptions)); 
       unsigned iter = 0;
       size_t instart = lz77->pos[lstart];
       size_t inend = instart + ZopfliLZ77GetByteRange(lz77, lstart, lend);
@@ -1407,7 +1404,7 @@ static void *threading(void *a) {
           statsdb.blocksize = blocksize;
           statsdb.blockcrc = blockcrc;
           statsdb.mode = tries;
-          statsdb.beststats = malloc(sizeof(SymbolStats));
+          statsdb.beststats = Zmalloc(sizeof(SymbolStats));
           InitStats(statsdb.beststats);
           if(StatsDBLoad(&statsdb)) {
             b->beststats = statsdb.beststats;
@@ -1493,23 +1490,23 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   size_t nextblock = bkstart;
   size_t n, i;
 #ifndef _WIN32
-  cpu_set_t *cpuset = malloc(sizeof(cpu_set_t) * options->affamount);
+  cpu_set_t *cpuset = Zmalloc(sizeof(cpu_set_t) * options->affamount);
 #endif
-  zfloat *tempcost = malloc(sizeof(*tempcost) * (bkend+1));
+  zfloat *tempcost = Zmalloc(sizeof(*tempcost) * (bkend+1));
   unsigned char lastthread = 0;
-  unsigned char* blockdone = calloc(bkend+1,sizeof(unsigned char));
+  unsigned char* blockdone = Zcalloc(bkend+1,sizeof(unsigned char));
 #ifdef _WIN32
-  HANDLE *thr = malloc(sizeof(HANDLE) * numthreads);
+  HANDLE *thr = Zmalloc(sizeof(HANDLE) * numthreads);
 #else
-  pthread_t *thr = malloc(sizeof(pthread_t) * numthreads);
-  pthread_attr_t *thr_attr = malloc(sizeof(pthread_attr_t) * numthreads);
+  pthread_t *thr = Zmalloc(sizeof(pthread_t) * numthreads);
+  pthread_attr_t *thr_attr = Zmalloc(sizeof(pthread_attr_t) * numthreads);
 #endif
-  ZopfliThread *t = malloc(sizeof(ZopfliThread) * numthreads);
-  ZopfliLZ77Store *tempstore = malloc(sizeof(ZopfliLZ77Store) * (bkend+1));
-  ZopfliBestStats* statsdb = malloc(sizeof(ZopfliBestStats) * numthreads);
+  ZopfliThread *t = Zmalloc(sizeof(ZopfliThread) * numthreads);
+  ZopfliLZ77Store *tempstore = Zmalloc(sizeof(ZopfliLZ77Store) * (bkend+1));
+  ZopfliBestStats* statsdb = Zmalloc(sizeof(ZopfliBestStats) * numthreads);
 
-  ZopfliBlockInfo *blockinfo     = malloc(sizeof(ZopfliBlockInfo) * (bkend+1));
-  ZopfliBlockInfo *tempblockinfo = malloc(sizeof(ZopfliBlockInfo));
+  ZopfliBlockInfo *blockinfo     = Zmalloc(sizeof(ZopfliBlockInfo) * (bkend+1));
+  ZopfliBlockInfo *tempblockinfo = Zmalloc(sizeof(ZopfliBlockInfo));
   size_t processedbytes = 0;
   size_t processedblocks = 0;
 
@@ -1585,7 +1582,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
         if(t[threnum].is_running==1) {
           if(t[threnum].allstatscontrol & 0x0100) {
             statsdb[threnum].mode = t[threnum].allstatscontrol & 0xF;
-            statsdb[threnum].beststats = malloc(sizeof(SymbolStats));
+            statsdb[threnum].beststats = Zmalloc(sizeof(SymbolStats));
             InitStats(statsdb[threnum].beststats);
             if(StatsDBLoad(&statsdb[threnum])) {
               t[threnum].beststats = statsdb[threnum].beststats;
@@ -1645,7 +1642,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               statsdb[threnum].blockcrc = blockcrc;
               if(!(options->mode & 0x0010)) {
                 statsdb[threnum].mode = options->mode & 0xF;
-                statsdb[threnum].beststats = malloc(sizeof(SymbolStats));
+                statsdb[threnum].beststats = Zmalloc(sizeof(SymbolStats));
                 InitStats(statsdb[threnum].beststats);
                 if(StatsDBLoad(&statsdb[threnum])) {
                   t[threnum].beststats = statsdb[threnum].beststats;
@@ -1857,11 +1854,11 @@ DLL_PUBLIC void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int f
         splitunctemp = 0;
       }
     }
-    splitpoints = (size_t*)calloc(npoints, sizeof(*splitpoints));
+    splitpoints = Zcalloc(npoints, sizeof(*splitpoints));
   }
 
   if(options->mode & 0x0010) {
-    bestperblock = malloc(sizeof(*bestperblock) * (npoints + 1));
+    bestperblock = Zmalloc(sizeof(*bestperblock) * (npoints + 1));
   }
 
   i = 0;
@@ -1916,7 +1913,7 @@ DLL_PUBLIC void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int f
         if (v>2) fprintf(stderr," Recompressing, pass #%d.\n",pass);
 
         if(options->mode & 0x0010) {
-          bestperblock2 = malloc(sizeof(*bestperblock2) * (npoints2+1));
+          bestperblock2 = Zmalloc(sizeof(*bestperblock2) * (npoints2+1));
         }
 
         ZopfliUseThreads(options, &lz77temp, in, instart, inend, j, npoints2,
@@ -1936,7 +1933,7 @@ DLL_PUBLIC void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int f
           free(bestperblock);
           npoints = npoints2;
           if(options->mode & 0x0010) {
-            bestperblock = malloc(sizeof(*bestperblock) * (npoints+1));
+            bestperblock = Zmalloc(sizeof(*bestperblock) * (npoints+1));
             for(i = 0; i<= npoints; ++i) {
               bestperblock[i] = bestperblock2[i];
             }
@@ -2049,8 +2046,8 @@ DLL_PUBLIC void ZopfliDeflate(const ZopfliOptions* options, int btype, int final
   ZopfliDeflatePart(options, btype, final, in, 0, insize, bp, out, outsize, options->verbose, sp);
 #else
   size_t i = 0;
-  ZopfliPredefinedSplits* originalsp = (ZopfliPredefinedSplits*)malloc(sizeof(ZopfliPredefinedSplits));
-  ZopfliPredefinedSplits* finalsp = (ZopfliPredefinedSplits*)malloc(sizeof(ZopfliPredefinedSplits));
+  ZopfliPredefinedSplits* originalsp = Zmalloc(sizeof(ZopfliPredefinedSplits));
+  ZopfliPredefinedSplits* finalsp = Zmalloc(sizeof(ZopfliPredefinedSplits));
   if(sp != NULL) {
     originalsp->splitpoints = 0;
     originalsp->npoints = 0;

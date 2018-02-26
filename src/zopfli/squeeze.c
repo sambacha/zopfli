@@ -34,11 +34,11 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 /* Sets everything to 0. */
 void InitStats(SymbolStats* stats) {
-  stats->litlens = calloc(ZOPFLI_NUM_LL, sizeof(*stats->litlens));
-  stats->dists = calloc(ZOPFLI_NUM_D, sizeof(*stats->dists));
+  stats->litlens = Zcalloc(ZOPFLI_NUM_LL, sizeof(*stats->litlens));
+  stats->dists = Zcalloc(ZOPFLI_NUM_D, sizeof(*stats->dists));
 
-  stats->ll_symbols = calloc(ZOPFLI_NUM_LL, sizeof(*stats->ll_symbols));
-  stats->d_symbols = calloc(ZOPFLI_NUM_D, sizeof(*stats->d_symbols));
+  stats->ll_symbols = Zcalloc(ZOPFLI_NUM_LL, sizeof(*stats->ll_symbols));
+  stats->d_symbols = Zcalloc(ZOPFLI_NUM_D, sizeof(*stats->d_symbols));
 }
 
 void CopyStats(SymbolStats* source, SymbolStats* dest) {
@@ -383,14 +383,14 @@ static void TraceBackwards(size_t size, const unsigned short* length_array,
       ++cntr;
     } while(index -= length_array[index]);
     *pathsizebuff = cntr + ZOPFLI_REALLOC_BUFFER;
-    *path = realloc(*path,*pathsizebuff * sizeof(*path));
+    *path = Zrealloc(*path,*pathsizebuff * sizeof(*path));
     index = size;
   }
 
   do {
     if(*pathsize == *pathsizebuff) {
       *pathsizebuff += ZOPFLI_REALLOC_BUFFER;
-      *path = realloc(*path,*pathsizebuff * sizeof(*path));
+      *path = Zrealloc(*path,*pathsizebuff * sizeof(*path));
     }
     (*path)[(*pathsize)++] = length_array[index];
     assert(length_array[index] <= index);
@@ -527,8 +527,7 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
                          SymbolStats** foundbest, unsigned int* startiteration) {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
-  unsigned short* length_array =
-      (unsigned short*)malloc(sizeof(unsigned short) * (blocksize + 1));
+  unsigned short* length_array = Zmalloc(sizeof(unsigned short) * (blocksize + 1));
   unsigned short* path = 0;
   size_t pathsize = 0;
   size_t pathsizebuff = 0;
@@ -537,7 +536,7 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
   unsigned int i = *startiteration, j;
   unsigned int fails = 0, lastrandomstep = 0;
   zfloat cost;
-  zfloat *costs = (zfloat*)malloc(sizeof(zfloat) * (blocksize + 1));
+  zfloat *costs = Zmalloc(sizeof(zfloat) * (blocksize + 1));
   zfloat bestcost = ZOPFLI_LARGE_FLOAT;
   zfloat lastcost = 0;
   zfloat statsimp = (zfloat)s->options->statimportance/(zfloat)100;
@@ -546,9 +545,6 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
   RanState ran_state;
   ZopfliHash hash;
   ZopfliHash* h = &hash;
-
-  if (!length_array) exit(-1); /* Allocation failed. */
-  if (!costs) exit(-1); /* Allocation failed. */
 
   InitRanState(&ran_state, s->options->ranstatewz,
                (s->options->mode & 0x0020), s->options->ranstatemod);
@@ -647,7 +643,7 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
      stats found. */
   if(foundbest!=NULL) {
     if(*foundbest==NULL) {
-      *foundbest = malloc(sizeof(**foundbest));
+      *foundbest = Zmalloc(sizeof(**foundbest));
       InitStats(*foundbest);
     }
     CopyStats(&beststats, *foundbest);
@@ -673,18 +669,14 @@ void ZopfliLZ77OptimalFixed(ZopfliBlockState *s,
 {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
-  unsigned short* length_array =
-      (unsigned short*)malloc(sizeof(unsigned short) * (blocksize + 1));
+  unsigned short* length_array = Zmalloc(sizeof(unsigned short) * (blocksize + 1));
   unsigned short* path = 0;
   size_t pathsize = 0;
   size_t pathsizebuff = 0;
-  zfloat *costs = (zfloat*)malloc(sizeof(zfloat) * (blocksize + 1));
+  zfloat *costs = Zmalloc(sizeof(zfloat) * (blocksize + 1));
   ZopfliHash hash;
   ZopfliHash* h = &hash;
   ZopfliMallocHash(ZOPFLI_WINDOW_SIZE, h);
-
-  if (!length_array) exit(-1); /* Allocation failed. */
-  if (!costs) exit(-1); /* Allocation failed. */
 
   s->blockstart = instart;
   s->blockend = inend;

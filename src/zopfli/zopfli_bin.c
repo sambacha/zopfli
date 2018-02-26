@@ -139,7 +139,7 @@ static void LoadFile(const char* filename,
     *outsize = ZOPFLI_MASTER_BLOCK_SIZE;
   }
   fseeko(file, *offset, SEEK_SET);
-  *out = (unsigned char*)malloc(*outsize);
+  *out = Zmalloc(*outsize);
   *offset+=*outsize;
 
   if (*outsize && (*out)) {
@@ -203,8 +203,7 @@ static char* AddStrings(const char* str1, const char* str2) {
   char* result;
   for(a=0;str1[a]!='\0';a++) {}
   for(b=0;str2[b]!='\0';b++) {}
-  result = (char*)malloc((a+b) + 1);
-  if (!result) exit(-1); /* Allocation failed. */
+  result = Zmalloc((a+b) + 1);
   strcpy(result, str1);
   strcat(result, str2);
   return result;
@@ -236,10 +235,10 @@ static int ListDir(const char* filename, char ***filesindir,
         free(statfile);
         statfile = 0;
         if((attrib.st_mode & S_IFDIR)==0) {
-          *filesindir = realloc(*filesindir,((unsigned int)*j+1)*(sizeof(char*)));
+          *filesindir = Zrealloc(*filesindir,((unsigned int)*j+1)*(sizeof(char*)));
           if(isroot==1) {
             for(i=0;ent->d_name[i]!='\0';i++) {}
-            (*filesindir)[*j] = malloc(i * sizeof(char*) +1);
+            (*filesindir)[*j] = Zmalloc(i * sizeof(char*) +1);
             strcpy((*filesindir)[*j], ent->d_name);
           } else {
             for(i=0;initdir[i]!='/';i++) {}
@@ -247,7 +246,7 @@ static int ListDir(const char* filename, char ***filesindir,
             for(k=i;initdir[k]!='\0';k++) {}
             k-=i;
             for(l=0;ent->d_name[l]!='\0';l++) {}
-            (*filesindir)[*j] = malloc(k+l * sizeof(char*)+1);
+            (*filesindir)[*j] = Zmalloc(k+l * sizeof(char*)+1);
             statfile=AddStrings(initdir+i,ent->d_name);
             strcpy((*filesindir)[*j], statfile);
             free(statfile);
@@ -275,8 +274,8 @@ static unsigned long Timestamp(const char* file, const ZopfliFormat output_type)
   struct tm* tt;
   struct stat attrib;
   stat(file, &attrib);
-  tt = gmtime(&(attrib.st_mtime));
   if(output_type == ZOPFLI_FORMAT_GZIP || output_type == ZOPFLI_FORMAT_GZIP_NAME) {
+    tt = gmtime(&(attrib.st_mtime));
     if(tt->tm_year<70) {
       tt->tm_year=70;
       mktime(tt);
@@ -285,6 +284,7 @@ static unsigned long Timestamp(const char* file, const ZopfliFormat output_type)
             (tt->tm_year-70)*31536000 + ((tt->tm_year-69)/4)*86400 -
             ((tt->tm_year-1)/100)*86400 + ((tt->tm_year+299)/400)*86400;
   } else if(output_type == ZOPFLI_FORMAT_ZIP) {
+    tt = localtime(&(attrib.st_mtime));
     if(tt->tm_year<80) {
       tt->tm_year=80;
       mktime(tt);
@@ -542,7 +542,7 @@ static int Compress(ZopfliOptions* options, const ZopfliBinOptions* binoptions,
   } else {
     SaveFile(outfilename, out, outsize,soffset);
     if(output_type == ZOPFLI_FORMAT_ZIP) {
-      unsigned char* buff = (unsigned char*)malloc(8 * sizeof(unsigned char*));
+      unsigned char* buff = Zmalloc(8 * sizeof(unsigned char*));
       for(i=0;i<4;++i) {
         buff[i] = (checksum >> (i*8)) % 256;
         buff[i+4] = (compsize >> (i*8)) % 256;
@@ -656,13 +656,13 @@ may turn into garbage...
 static void ParseCustomBlockBoundaries(size_t** bs, const char* data) {
   char buff[2] = {0, 0};
   size_t j, k=1;
-  (*bs) = malloc(++k * sizeof(size_t*));
+  (*bs) = Zmalloc(++k * sizeof(size_t*));
   (*bs)[0] = 1;
   (*bs)[1] = 0;
   for(j=0;data[j]!='\0';j++) {
     if(data[j]==',') {
       ++(*bs)[0];
-      (*bs) = realloc((*bs), ++k * sizeof(size_t*));
+      (*bs) = Zrealloc((*bs), ++k * sizeof(size_t*));
       (*bs)[k-1] = 0;
     } else {
       buff[0]=data[j];
@@ -744,7 +744,7 @@ int main(int argc, char* argv[]) {
       const char *aff = arg+5;
       char buff[2] = {0, 0};
       size_t pos = 0;
-      options.threadaffinity = malloc(sizeof(size_t));
+      options.threadaffinity = Zmalloc(sizeof(size_t));
       while(aff[pos] != '\0') {
         options.threadaffinity[options.affamount] = 0;
         while(aff[pos] != ',') {
@@ -755,7 +755,7 @@ int main(int argc, char* argv[]) {
           if(aff[pos] == '\0') break;
         }
         ++options.affamount;
-        options.threadaffinity = (size_t*)realloc(options.threadaffinity, (options.affamount+1) * sizeof(size_t));
+        options.threadaffinity = Zrealloc(options.threadaffinity, (options.affamount+1) * sizeof(size_t));
         if(aff[pos] == '\0') break;
         ++pos;
       }
@@ -806,7 +806,7 @@ int main(int argc, char* argv[]) {
         fseeko(file,0,SEEK_END);
         size=ftello(file);
         if(size>0) {
-          filedata = (char *) malloc((size+1) * sizeof(char*));
+          filedata = Zmalloc((size+1) * sizeof(char*));
           rewind(file);
           if(fread(filedata,1,size,file)) {}
           filedata[size]='\0';

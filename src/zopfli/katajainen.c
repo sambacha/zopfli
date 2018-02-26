@@ -23,6 +23,7 @@ Bounded package merge algorithm, based on the paper
 Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 */
 
+#include "util.h"
 #include "defines.h"
 #include "katajainen.h"
 #include <stdlib.h>
@@ -201,7 +202,7 @@ int ZopfliLengthLimitedCodeLengths(
   Node* (*lists)[2];
 
   /* One leaf per symbol. Only numsymbols leaves will be used. */
-  Node* leaves = (Node*)malloc(n * sizeof(*leaves));
+  Node* leaves = Zmalloc(n * sizeof(*leaves));
 
   /* Initialize all bitlengths at 0. */
   memset(bitlengths, 0, n * sizeof(bitlengths[0]));
@@ -260,10 +261,10 @@ int ZopfliLengthLimitedCodeLengths(
   }
 
   /* Initialize node memory pool. */
-  nodes = (Node*)malloc(maxbits * 2 * numsymbols * sizeof(Node));
+  nodes = Zmalloc(maxbits * 2 * numsymbols * sizeof(Node));
   pool.next = nodes;
 
-  lists = (Node* (*)[2])malloc(maxbits * sizeof(*lists));
+  lists = (Node* (*)[2])Zmalloc(maxbits * sizeof(*lists));
   InitLists(&pool, leaves, maxbits, lists);
 
   /* In the last list, 2 * numsymbols - 2 active chains need to be created. Two

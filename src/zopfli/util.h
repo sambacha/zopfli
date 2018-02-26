@@ -151,8 +151,8 @@ equal than *size.
   if (!((*size) & ((*size) - 1))) {\
     /*zfloat alloc size if it's a power of two*/\
     void** data_void = reinterpret_cast<void**>(data);\
-    *data_void = (*size) == 0 ? malloc(sizeof(**data))\
-                              : realloc((*data), (*size) * 2 * sizeof(**data));\
+    *data_void = (*size) == 0 ? Zmalloc(sizeof(**data))\
+                              : Zrealloc((*data), (*size) * 2 * sizeof(**data));\
   }\
   (*data)[(*size)] = (value);\
   (*size)++;\
@@ -161,13 +161,18 @@ equal than *size.
 #define ZOPFLI_APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size) {\
   if (!((*size) & ((*size) - 1))) {\
     /*zfloat alloc size if it's a power of two*/\
-    (*data) = (*size) == 0 ? malloc(sizeof(**data))\
-                           : realloc((*data), (*size) * 2 * sizeof(**data));\
+    (*data) = (*size) == 0 ? Zmalloc(sizeof(**data))\
+                           : Zrealloc((*data), (*size) * 2 * sizeof(**data));\
   }\
   (*data)[(*size)] = (value);\
   (*size)++;\
 }
 #endif
 
+void *Zmalloc(size_t size);
+
+void *Zcalloc(size_t ElemAm, size_t ElemSize);
+
+void *Zrealloc(void* ptr, size_t size);
 
 #endif  /* ZOPFLI_UTIL_H_ */

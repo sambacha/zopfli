@@ -63,22 +63,13 @@ void ZopfliCopyLZ77Store(
   size_t dsize = ZOPFLI_NUM_D * CeilDiv(source->size, ZOPFLI_NUM_D);
   ZopfliCleanLZ77Store(dest);
   ZopfliInitLZ77Store(source->data, dest);
-  dest->litlens =
-      (unsigned short*)malloc(sizeof(*dest->litlens) * source->size);
-  dest->dists = (unsigned short*)malloc(sizeof(*dest->dists) * source->size);
-  dest->pos = (size_t*)malloc(sizeof(*dest->pos) * source->size);
-  dest->ll_symbol =
-      (unsigned short*)malloc(sizeof(*dest->ll_symbol) * source->size);
-  dest->d_symbol =
-      (unsigned short*)malloc(sizeof(*dest->d_symbol) * source->size);
-  dest->ll_counts = (size_t*)malloc(sizeof(*dest->ll_counts) * llsize);
-  dest->d_counts = (size_t*)malloc(sizeof(*dest->d_counts) * dsize);
-
-  /* Allocation failed. */
-  if (!dest->litlens || !dest->dists) exit(-1);
-  if (!dest->pos) exit(-1);
-  if (!dest->ll_symbol || !dest->d_symbol) exit(-1);
-  if (!dest->ll_counts || !dest->d_counts) exit(-1);
+  dest->litlens = Zmalloc(sizeof(*dest->litlens) * source->size);
+  dest->dists = Zmalloc(sizeof(*dest->dists) * source->size);
+  dest->pos = Zmalloc(sizeof(*dest->pos) * source->size);
+  dest->ll_symbol = Zmalloc(sizeof(*dest->ll_symbol) * source->size);
+  dest->d_symbol = Zmalloc(sizeof(*dest->d_symbol) * source->size);
+  dest->ll_counts = Zmalloc(sizeof(*dest->ll_counts) * llsize);
+  dest->d_counts = Zmalloc(sizeof(*dest->d_counts) * dsize);
 
   dest->size = source->size;
   memcpy(dest->litlens, source->litlens,
@@ -111,13 +102,13 @@ void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
 
   if(store->buffer == origsize) {
     store->buffer = origsize + ZOPFLI_REALLOC_BUFFER;
-    store->ll_counts = realloc(store->ll_counts,(store->buffer + ZOPFLI_NUM_LL) * sizeof(store->ll_counts));
-    store->d_counts  = realloc(store->d_counts,(store->buffer + ZOPFLI_NUM_D) * sizeof(store->d_counts));
-    store->litlens   = realloc(store->litlens,store->buffer * sizeof(store->litlens));
-    store->dists     = realloc(store->dists,store->buffer * sizeof(store->dists));
-    store->pos       = realloc(store->pos,store->buffer * sizeof(store->pos));
-    store->ll_symbol = realloc(store->ll_symbol,store->buffer * sizeof(store->ll_symbol));
-    store->d_symbol  = realloc(store->d_symbol,store->buffer * sizeof(store->d_symbol));
+    store->ll_counts = Zrealloc(store->ll_counts,(store->buffer + ZOPFLI_NUM_LL) * sizeof(store->ll_counts));
+    store->d_counts  = Zrealloc(store->d_counts,(store->buffer + ZOPFLI_NUM_D) * sizeof(store->d_counts));
+    store->litlens   = Zrealloc(store->litlens,store->buffer * sizeof(store->litlens));
+    store->dists     = Zrealloc(store->dists,store->buffer * sizeof(store->dists));
+    store->pos       = Zrealloc(store->pos,store->buffer * sizeof(store->pos));
+    store->ll_symbol = Zrealloc(store->ll_symbol,store->buffer * sizeof(store->ll_symbol));
+    store->d_symbol  = Zrealloc(store->d_symbol,store->buffer * sizeof(store->d_symbol));
   }
 
   /* Everytime the index wraps around, a new cumulative histogram is made: we're
@@ -222,7 +213,7 @@ void ZopfliInitBlockState(const ZopfliOptions* options,
   s->blockend = blockend;
 #ifdef ZOPFLI_LONGEST_MATCH_CACHE
   if (add_lmc) {
-    s->lmc = (ZopfliLongestMatchCache*)malloc(sizeof(ZopfliLongestMatchCache));
+    s->lmc = Zmalloc(sizeof(ZopfliLongestMatchCache));
     ZopfliInitCache(blockend - blockstart, s->lmc);
   } else {
     s->lmc = 0;

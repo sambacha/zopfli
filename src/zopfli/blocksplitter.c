@@ -24,6 +24,12 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #include <assert.h>
 #include <stdio.h>
+#include <unistd.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 
 #include "deflate.h"
 #include "squeeze.h"
@@ -81,8 +87,8 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
           :(size_t)(size/minrec)
         :minrec;
     size_t i;
-    size_t *p = (size_t*)malloc(sizeof(*p) * max_recursion);
-    zfloat *vp = (zfloat*)malloc(sizeof(*vp) * max_recursion);
+    size_t *p = Zmalloc(sizeof(*p) * max_recursion);
+    zfloat *vp = Zmalloc(sizeof(*vp) * max_recursion);
     size_t besti;
     zfloat best;
     zfloat lastbest = ZOPFLI_LARGE_FLOAT;
@@ -243,133 +249,284 @@ static int FindLargestSplittableBlock(
   return found;
 }
 
+typedef struct ZopfliBSThread {
+  const ZopfliOptions* options;
+
+  const ZopfliLZ77Store* lz77;
+
+  size_t affmask;
+
+  int is_running;
+
+  int verbose;
+
+  unsigned int minrec;
+
+  size_t maxblocks;
+
+  size_t numblocks;
+
+  size_t* splitpoints;
+
+  size_t npoints;
+} ZopfliBSThread;
+
+#ifdef _WIN32
+DWORD WINAPI BSthreading(void *a) {
+#else
+static void *BSthreading(void *a) {
+#endif
+
+  ZopfliBSThread *b = (ZopfliBSThread *)a;
+  ZopfliOptions* options = Zmalloc(sizeof(*options));
+  unsigned char* done = Zcalloc(b->lz77->size, sizeof(unsigned char));
+  size_t lstart = 0;
+  size_t lend = b->lz77->size;
+  size_t llpos = 0;
+  zfloat splitcost;
+  zfloat origcost;
+
+  b->numblocks = 1;
+  b->splitpoints = 0;
+  b->npoints = 0;
+  memcpy(options,b->options,sizeof(*options));
+  options->verbose = b->verbose;
+  
+  for (;;) {
+    SplitCostContext c;
+
+    if(b->maxblocks > 0 && b->numblocks >= b->maxblocks) {
+      break;
+    }
+
+    c.lz77 = b->lz77;
+    c.options = options;
+    c.start = lstart;
+    c.end = lend;
+    assert(lstart < lend);
+    llpos = FindMinimum(SplitCost, &c, lstart + 1, lend, &splitcost, b->minrec);
+
+    assert(llpos > lstart);
+    assert(llpos < lend);
+
+    origcost = EstimateCost(b->options, b->lz77, lstart, lend);
+
+    if (splitcost > origcost || llpos == lstart + 1 || llpos == lend) {
+      done[lstart] = 1;
+    } else {
+      AddSorted(llpos, &(b->splitpoints), &(b->npoints));
+      ++(b->numblocks);
+      if(b->verbose>0) 
+        fprintf(stderr,"      [BSR: %d] Initializing blocks: %lu    \r",b->minrec,(unsigned long)(b->numblocks));
+    }
+
+    if (!FindLargestSplittableBlock(
+        b->lz77->size, done, b->splitpoints, b->npoints, &lstart, &lend)) {
+      break;  /* No further split will probably reduce compression. */
+    }
+
+    if (lend - lstart < 10) {
+      break;
+    }
+  }
+  free(options);
+  free(done);
+
+  b->is_running = 0;
+
+  return 0;
+  
+}
+
 void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
                           const ZopfliLZ77Store* lz77, size_t maxblocks,
                           size_t** splitpoints, size_t* npoints) {
-  size_t lstart, lend;
-  size_t llpos;
-  size_t numblocks = 1;
-  size_t evalsplit;
-  unsigned int minrec;
-  unsigned char* done;
-  zfloat splitcost;
-  zfloat origcost;
-  zfloat totalcost;
-  zfloat totalcost2 = ZOPFLI_LARGE_FLOAT;
-  size_t* splitpoints2 = 0;
-  size_t npoints2 = 0;
-  size_t numblocks2;
-  unsigned int stopbsr = 20;
 
-  if (lz77->size < 10) return;  /* This code fails on tiny files. */
+ if (lz77->size < 10) return;  /* This code fails on tiny files. */
 
-  if((options->mode & 0x0400) == 0x0400) {
-    evalsplit = 1;
-    minrec = 2;
-    if((options->mode & 0x0200) == 0x0200) {
-      for(;;) {
-        if(minrec>lz77->size)
-          break;
-        minrec = minrec << 1;
+  {
+    size_t evalsplit = (options->mode & 0x0400) == 0x0400;
+    unsigned numthreads = evalsplit?(options->numthreads>0?options->numthreads:1):1;
+
+#ifndef _WIN32
+    cpu_set_t *cpuset = Zmalloc(sizeof(cpu_set_t) * options->affamount);
+#endif
+#ifdef _WIN32
+    HANDLE *thr = Zmalloc(sizeof(HANDLE) * numthreads);
+#else
+    pthread_t *thr = Zmalloc(sizeof(pthread_t) * numthreads);
+    pthread_attr_t *thr_attr = Zmalloc(sizeof(pthread_attr_t) * numthreads);
+#endif
+    ZopfliBSThread *t = Zmalloc(sizeof(ZopfliBSThread) * numthreads);
+    size_t threadsrunning;
+    size_t y;
+    size_t x;
+    size_t numblocks = 1;
+    unsigned int minrec;
+    zfloat totalcost2 = ZOPFLI_LARGE_FLOAT;
+    unsigned int stopbsr = 20;
+
+#ifndef _WIN32
+    for(x=0;x<options->affamount;++x) {
+      CPU_ZERO(&(cpuset[x]));
+      {
+        size_t cntr = 0;
+        size_t bitpos = 1;
+        while(bitpos <= options->threadaffinity[x]) {
+          if(options->threadaffinity[x] && bitpos)
+            CPU_SET(cntr, &(cpuset[x]));
+          bitpos = bitpos << 1;
+          ++cntr;
+        }
       }
     }
-  } else {
-    evalsplit = 0;
-    minrec = options->findminimumrec;
-  }
- 
-  do {
-    done = (unsigned char*)calloc(lz77->size, sizeof(unsigned char));
-    if (!done) exit(-1); /* Allocation failed. */
-    lstart = 0;
-    lend = lz77->size;
-    totalcost = 0;
-    numblocks2 = 1;
-    llpos = 0;
-    for (;;) {
-      SplitCostContext c;
-
-      if (maxblocks > 0 && numblocks2 >= maxblocks) {
-        break;
-      }
-
-      c.lz77 = lz77;
-      c.options = options;
-      c.start = lstart;
-      c.end = lend;
-      assert(lstart < lend);
-      llpos = FindMinimum(SplitCost, &c, lstart + 1, lend, &splitcost, minrec);
-
-      assert(llpos > lstart);
-      assert(llpos < lend);
-
-      origcost = EstimateCost(options, lz77, lstart, lend);
-
-      if (splitcost > origcost || llpos == lstart + 1 || llpos == lend) {
-        done[lstart] = 1;
-      } else {
-        AddSorted(llpos, &splitpoints2, &npoints2);
-        ++numblocks2;
-        if(options->verbose>0) 
-          fprintf(stderr,"      [BSR: %d] Initializing blocks: %lu    \r",minrec,(unsigned long)(numblocks2));
-      }
-
-      if (!FindLargestSplittableBlock(
-          lz77->size, done, splitpoints2, npoints2, &lstart, &lend)) {
-        break;  /* No further split will probably reduce compression. */
-      }
-
-      if (lend - lstart < 10) {
-        break;
-      }
-    }
-    free(done);
+#endif
     {
-      size_t i;
-      for(i=0;i<=npoints2;++i) {
-        lstart = i ==        0 ?          0 : splitpoints2[i - 1];
-        lend   = i == npoints2 ? lz77->size : splitpoints2[i];
-        totalcost += EstimateCost(options, lz77, lstart, lend);
+      size_t affcntr = 0;
+      for(x=0;x<numthreads;++x) {
+#ifndef _WIN32
+       pthread_attr_init(&(thr_attr[x]));
+       pthread_attr_setdetachstate(&(thr_attr[x]), PTHREAD_CREATE_DETACHED);
+#endif
+       t[x].options = options;
+       t[x].lz77 = lz77;
+       t[x].is_running = 0;
+       t[x].maxblocks = maxblocks;
+       if(options->affamount>0) {
+#ifdef _WIN32
+         t[x].affmask = options->threadaffinity[affcntr];
+#else
+         t[x].affmask = affcntr;
+#endif
+         ++affcntr;
+         if(affcntr >= options->affamount) affcntr = 0;
+       }
       }
     }
-    if(totalcost < totalcost2) {
-      size_t i;
-      if(options->verbose>0) {
-        fprintf(stderr, "      [BSR: %d] Estimate Cost: %lu bit",minrec,(unsigned long)totalcost);
-        if(totalcost2 != ZOPFLI_LARGE_FLOAT)
-          fprintf(stderr, " < %lu bit",(unsigned long)totalcost2);
-        fprintf(stderr, "                      \n");
-      }
-      totalcost2 = totalcost;
-      numblocks = numblocks2;
-      stopbsr = minrec + 20;
-      free(*splitpoints);
-      *splitpoints = 0;
-      *npoints = 0;
-      for(i=0;i<npoints2;++i) {
-        ZOPFLI_APPEND_DATA(splitpoints2[i],splitpoints,npoints);
-      }
-    }
-    free(splitpoints2);
-    splitpoints2=0;
-    npoints2 = 0;
+
     if(evalsplit) {
+      evalsplit = 1;
+      minrec = 2;
       if((options->mode & 0x0200) == 0x0200) {
-        if(minrec == 2) evalsplit = 0;
-        minrec = minrec >> 1;
-      } else {
-        if(minrec == stopbsr) evalsplit = 0;
-        ++minrec;
+        for(;;) {
+          if(minrec>lz77->size)
+            break;
+          minrec = minrec << 1;
+        }
       }
+    } else {
+      evalsplit = 0;
+      minrec = options->findminimumrec;
     }
-  } while(evalsplit);
+ 
+    do {
+      y = 0;
+      for(x=0;x<numthreads;++x) {
+        t[x].is_running = 1;
+        t[x].minrec = minrec;
+        if(numthreads>1) {
+          t[x].verbose = 0;
+#ifdef _WIN32
+          thr[x] = CreateThread(NULL, 0, BSthreading, (void *)&t[x], 0, NULL);
+#else
+          pthread_create(&thr[x], &(thr_attr[x]), BSthreading, (void *)&t[x]);
+#endif
+          if(options->affamount>0) {
+#ifdef _WIN32
+            SetThreadAffinityMask(thr[x], t[x].affmask);
+#else
+            pthread_setaffinity_np(thr[x], sizeof(cpu_set_t), &cpuset[t[x].affmask]);
+#endif
+          }
+        } else {
+          t[x].verbose = options->verbose;
+#ifdef _WIN32
+          BSthreading(&t[x]);
+#else
+          (*BSthreading)(&t[x]);
+#endif
+        }
+        ++y;
+        if((options->mode & 0x0200) == 0x0200) {
+          if(minrec == 2) {
+             break;
+           } else {
+             minrec = minrec >> 1;
+           }
+        } else {
+          ++minrec;
+        }
+      }
+      if(numthreads>1) {
+        do {
+          threadsrunning = 0;
+          for(x=0;x<y;++x) {
+            if(t[x].is_running == 1) {
+              size_t z;
+              ++threadsrunning;
+              for(z=0;z<4;++z) {
+                fprintf(stderr,"TESTREC | THR %2d | BSR %4d | BLK %4d    \r",
+                        (unsigned int)x,(unsigned int)t[x].minrec,(unsigned int)t[x].numblocks);
+                usleep(250000);
+              }
+            }
+          }
+        } while(threadsrunning);
+      }
 
-  if (options->verbose>3) {
-    PrintBlockSplitPoints(lz77, *splitpoints, *npoints);
-  }
+      for(x=0;x<y;++x) {
+        size_t totalcost = 0;
+        size_t i;
+        size_t lstart;
+        size_t lend;
+        for(i=0;i<=t[x].npoints;++i) {
+          lstart = i ==            0 ?          0 : t[x].splitpoints[i - 1];
+          lend   = i == t[x].npoints ? lz77->size : t[x].splitpoints[i];
+          totalcost += EstimateCost(options, lz77, lstart, lend);
+        }
+        if(totalcost < totalcost2) {
+          if(options->verbose>0) {
+            fprintf(stderr, "      [BSR: %d] Estimated Cost: %lu bit",t[x].minrec,(unsigned long)totalcost);
+            if(totalcost2 != ZOPFLI_LARGE_FLOAT)
+              fprintf(stderr, " < %lu bit",(unsigned long)totalcost2);
+            fprintf(stderr, "                      \n");
+          }
+          totalcost2 = totalcost;
+          numblocks = t[x].numblocks;
+          stopbsr = minrec + 20;
+          free(*splitpoints);
+          *splitpoints = 0;
+          *npoints = 0;
+          for(i=0;i<t[x].npoints;++i) {
+            ZOPFLI_APPEND_DATA((t[x].splitpoints)[i],splitpoints,npoints);
+          }
+        }
+        free(t[x].splitpoints);
+        if(evalsplit) {
+          if((options->mode & 0x0200) == 0x0200) {
+            if(minrec == 2) evalsplit = 0;
+          } else {
+            if(minrec >= stopbsr) evalsplit = 0;
+          }
+        }
+      }
+    } while(evalsplit);
 
-  if(options->verbose>2) {
-    fprintf(stderr, "Total blocks: %lu                 \n\n",(unsigned long)numblocks);
+    free(t);
+    free(thr);
+#ifndef _WIN32
+    free(thr_attr);
+    free(cpuset);
+#endif
+
+    if (options->verbose>3) {
+      PrintBlockSplitPoints(lz77, *splitpoints, *npoints);
+    }
+
+    if(options->verbose>2) {
+      fprintf(stderr, "Total blocks: %lu                 \n\n",(unsigned long)numblocks);
+    }
+
   }
 
 }
@@ -383,7 +540,7 @@ void ZopfliBlockSplit(const ZopfliOptions* options,
   size_t* lz77splitpoints = 0;
   size_t nlz77points = 0;
   ZopfliLZ77Store store;
-  ZopfliOptions* options2 = malloc(sizeof(ZopfliOptions));
+  ZopfliOptions* options2 = Zmalloc(sizeof(ZopfliOptions));
 
   memcpy(options2,options,sizeof(ZopfliOptions));
 

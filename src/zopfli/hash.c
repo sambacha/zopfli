@@ -51,52 +51,21 @@ void ZopfliInitHash(size_t window_size, ZopfliHash* h) {
 }
 
 void ZopfliMallocHash(size_t window_size, ZopfliHash* h) {
-  size_t i = 0;
 
-/* 
-   Some systems may refuse to give memory to many line-by-line
-   mallocs called from threads, usually caused by memory fragmentation.
-   If we face such scenario, try again every second up to 60 failed
-   attempts in a row which will cause program abort.
-   Memory fragmentation is usually fixed by rebooting.
-*/
-  do {
-    h->head = (int*)malloc(sizeof(*h->head) * 65536);
-    h->prev = (unsigned short*)malloc(sizeof(*h->prev) * window_size);
-    h->hashval = (int*)malloc(sizeof(*h->hashval) * window_size);
+  h->head = Zmalloc(sizeof(*h->head) * 65536);
+  h->prev = Zmalloc(sizeof(*h->prev) * window_size);
+  h->hashval = Zmalloc(sizeof(*h->hashval) * window_size);
 
 #ifdef ZOPFLI_HASH_SAME
-    h->same = (unsigned short*)malloc(sizeof(*h->same) * window_size);
+  h->same = Zmalloc(sizeof(*h->same) * window_size);
 #endif
 
 #ifdef ZOPFLI_HASH_SAME_HASH
-    h->head2 = (int*)malloc(sizeof(*h->head2) * 65536);
-    h->prev2 = (unsigned short*)malloc(sizeof(*h->prev2) * window_size);
-    h->hashval2 = (int*)malloc(sizeof(*h->hashval2) * window_size);
+  h->head2 = Zmalloc(sizeof(*h->head2) * 65536);
+  h->prev2 = Zmalloc(sizeof(*h->prev2) * window_size);
+  h->hashval2 = Zmalloc(sizeof(*h->hashval2) * window_size);
 #endif
 
-    if(h->head == NULL || h->prev == NULL || h->hashval == NULL
-
-#ifdef ZOPFLI_HASH_SAME
-    || h->same == NULL
-#endif
-
-#ifdef ZOPFLI_HASH_SAME_HASH
-    || h->head2 == NULL || h->prev2 == NULL || h->hashval2 == NULL
-#endif
-
-  ) {
-      ZopfliCleanHash(h);
-      ++i;
-      if(i==10) {
-        fprintf(stderr,"Couldn't init hash (out of memory?)  \n");
-        exit(EXIT_FAILURE);
-      }
-      sleep(1);
-    } else {
-      i=0;
-    }
-  } while(i!=0);
 }
 
 void ZopfliCleanHash(ZopfliHash* h) {
