@@ -53,6 +53,7 @@ static void IdlePriority() {
 
 void intHandlerpng(int exit_code) {
   if(exit_code==2) {
+    if(mui == 1) exit(EXIT_FAILURE);
     fprintf(stderr,"                                                              \n"
                    " (!!) CTRL+C detected! Setting --mui to 1 to finish work ASAP!\n"
                    " (!!) Press it again to abort work.\n");
