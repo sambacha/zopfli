@@ -1489,7 +1489,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   int neednext = 0;
   size_t nextblock = bkstart;
   size_t n, i;
-#ifndef _WIN32
+#ifdef __linux__
   cpu_set_t *cpuset = Zmalloc(sizeof(cpu_set_t) * options->affamount);
 #endif
   zfloat *tempcost = Zmalloc(sizeof(*tempcost) * (bkend+1));
@@ -1510,7 +1510,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   size_t processedbytes = 0;
   size_t processedblocks = 0;
 
-#ifndef _WIN32
+#ifdef __linux__
   for(i=0;i<options->affamount;++i) {
     CPU_ZERO(&(cpuset[i]));
     {
@@ -1671,7 +1671,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               if(options->affamount>0) {
 #ifdef _WIN32
                 SetThreadAffinityMask(thr[threnum], t[threnum].affmask);
-#else
+#elif __linux__
                 pthread_setaffinity_np(thr[threnum], sizeof(cpu_set_t), &cpuset[t[threnum].affmask]);
 #endif
               }
@@ -1751,7 +1751,9 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   free(thr);
 #ifndef _WIN32
   free(thr_attr);
+  #ifdef __linux__
   free(cpuset);
+  #endif
 #endif
   free(tempcost);
 }
