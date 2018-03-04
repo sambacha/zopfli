@@ -30,6 +30,9 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #else
 #include <pthread.h>
 #endif
+#ifdef __MACH__
+#include "affinity.h"
+#endif
 
 #include "deflate.h"
 #include "squeeze.h"
@@ -348,7 +351,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
     size_t evalsplit = (options->mode & 0x0400) == 0x0400;
     unsigned numthreads = evalsplit?(options->numthreads>0?options->numthreads:1):1;
 
-#ifdef __linux__
+#ifndef _WIN32
     cpu_set_t *cpuset = Zmalloc(sizeof(cpu_set_t) * options->affamount);
 #endif
 #ifdef _WIN32
@@ -366,7 +369,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
     zfloat totalcost2 = ZOPFLI_LARGE_FLOAT;
     unsigned int stopbsr = 20;
 
-#ifdef __linux__
+#ifndef _WIN32
     for(x=0;x<options->affamount;++x) {
       CPU_ZERO(&(cpuset[x]));
       {
@@ -434,7 +437,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
           if(options->affamount>0) {
 #ifdef _WIN32
             SetThreadAffinityMask(thr[x], t[x].affmask);
-#elif __linux__
+#else
             pthread_setaffinity_np(thr[x], sizeof(cpu_set_t), &cpuset[t[x].affmask]);
 #endif
           }
@@ -516,9 +519,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
     free(thr);
 #ifndef _WIN32
     free(thr_attr);
-  #ifdef __linux__
     free(cpuset);
-  #endif
 #endif
 
     if (options->verbose>3) {

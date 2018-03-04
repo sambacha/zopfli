@@ -37,6 +37,9 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #else
 #include <pthread.h>
 #endif
+#ifdef __MACH__
+#include "affinity.h"
+#endif
 
 #include "inthandler.h"
 #include "blocksplitter.h"
@@ -1489,7 +1492,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   int neednext = 0;
   size_t nextblock = bkstart;
   size_t n, i;
-#ifdef __linux__
+#ifndef _WIN32
   cpu_set_t *cpuset = Zmalloc(sizeof(cpu_set_t) * options->affamount);
 #endif
   zfloat *tempcost = Zmalloc(sizeof(*tempcost) * (bkend+1));
@@ -1510,7 +1513,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   size_t processedbytes = 0;
   size_t processedblocks = 0;
 
-#ifdef __linux__
+#ifndef _WIN32
   for(i=0;i<options->affamount;++i) {
     CPU_ZERO(&(cpuset[i]));
     {
@@ -1671,7 +1674,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               if(options->affamount>0) {
 #ifdef _WIN32
                 SetThreadAffinityMask(thr[threnum], t[threnum].affmask);
-#elif __linux__
+#else
                 pthread_setaffinity_np(thr[threnum], sizeof(cpu_set_t), &cpuset[t[threnum].affmask]);
 #endif
               }
@@ -1751,9 +1754,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   free(thr);
 #ifndef _WIN32
   free(thr_attr);
-  #ifdef __linux__
   free(cpuset);
-  #endif
 #endif
   free(tempcost);
 }
