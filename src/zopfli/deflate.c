@@ -1610,7 +1610,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
                 if(calci>options->numiterations) calci=options->numiterations;
               }
               thrprogress = (int)(((zfloat)t[showthread].iterations.iteration / (zfloat)calci) * 100);
-              usleep(250000);
+              usleep(200000);
               fprintf(stderr,"%3d%% THR %2d | BLK %4d | BST %5d: %d b | ITR %5d: %d b   \r",
                       thrprogress, showthread, ((unsigned int)t[showthread].iterations.block+1),
                       t[showthread].iterations.bestiteration, t[showthread].iterations.bestcost,
@@ -1636,6 +1636,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               threnum=0;
           }
         }
+        usleep(50000);
         if(t[threnum].is_running==0) {
           if(lastthread == 0) {
             t[threnum].beststats = 0;
