@@ -37,6 +37,9 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #else
 #include <pthread.h>
 #endif
+#ifdef __MACH__
+#include "affinity.h"
+#endif
 
 #include "inthandler.h"
 #include "blocksplitter.h"
