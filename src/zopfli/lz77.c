@@ -1,6 +1,6 @@
 /*
 Copyright 2011 Google Inc. All Rights Reserved.
-Copyright 2015 Mr_KrzYch00. All Rights Reserved.
+Copyright 2018 Mr_KrzYch00. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -102,13 +102,13 @@ void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
 
   if(store->buffer == origsize) {
     store->buffer = origsize + ZOPFLI_REALLOC_BUFFER;
-    store->ll_counts = Zrealloc(store->ll_counts,(store->buffer + ZOPFLI_NUM_LL) * sizeof(store->ll_counts));
-    store->d_counts  = Zrealloc(store->d_counts,(store->buffer + ZOPFLI_NUM_D) * sizeof(store->d_counts));
-    store->litlens   = Zrealloc(store->litlens,store->buffer * sizeof(store->litlens));
-    store->dists     = Zrealloc(store->dists,store->buffer * sizeof(store->dists));
-    store->pos       = Zrealloc(store->pos,store->buffer * sizeof(store->pos));
-    store->ll_symbol = Zrealloc(store->ll_symbol,store->buffer * sizeof(store->ll_symbol));
-    store->d_symbol  = Zrealloc(store->d_symbol,store->buffer * sizeof(store->d_symbol));
+    store->ll_counts = Zrealloc(store->ll_counts,(store->buffer + ZOPFLI_NUM_LL) * sizeof(*store->ll_counts));
+    store->d_counts  = Zrealloc(store->d_counts,(store->buffer + ZOPFLI_NUM_D) * sizeof(*store->d_counts));
+    store->litlens   = Zrealloc(store->litlens,store->buffer * sizeof(*store->litlens));
+    store->dists     = Zrealloc(store->dists,store->buffer * sizeof(*store->dists));
+    store->pos       = Zrealloc(store->pos,store->buffer * sizeof(*store->pos));
+    store->ll_symbol = Zrealloc(store->ll_symbol,store->buffer * sizeof(*store->ll_symbol));
+    store->d_symbol  = Zrealloc(store->d_symbol,store->buffer * sizeof(*store->d_symbol));
   }
 
   /* Everytime the index wraps around, a new cumulative histogram is made: we're

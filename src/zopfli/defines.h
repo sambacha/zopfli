@@ -1,5 +1,5 @@
 /*
-Copyright 2016 Mr_KrzYch00. All Rights Reserved.
+Copyright 2018 Mr_KrzYch00. All Rights Reserved.
 
 Define some additional information for compiler
 required by Zopfli KrzYmod.
@@ -15,7 +15,7 @@ required by Zopfli KrzYmod.
 #include <float.h>
 
 #define VERYEAR   18
-#define VERMONTH  3
+#define VERMONTH  6
 #define VERCOMMIT 1
 
 #define BESTSTATSDBVER 1

@@ -1,7 +1,7 @@
 /*
 Copyright 2011 Google Inc. All Rights Reserved.
 Copyright 2015 Frédéric Kayser. All Rights Reserved.
-Copyright 2016 Mr_KrzYch00. All Rights Reserved.
+Copyright 2018 Mr_KrzYch00. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1473,6 +1473,8 @@ typedef struct ZopfliBlockInfo {
   size_t end;
 
   size_t len;
+  
+  unsigned long crc;
 } ZopfliBlockInfo;
 
 static void ZopfliUseThreads(const ZopfliOptions* options,
@@ -1555,6 +1557,11 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
     blockinfo[i].start = i == 0 ? instart : (*splitpoints_uncompressed)[i - 1];
     blockinfo[i].end   = i == bkend ? inend : (*splitpoints_uncompressed)[i];
     blockinfo[i].len   = blockinfo[i].end - blockinfo[i].start;
+    if((options->mode & 0x0100) && !(options->numthreads == 0 && (options->mode & 0x0010))) {
+      blockinfo[i].crc = CRC(in + blockinfo[i].start, blockinfo[i].len);
+    } else {
+      blockinfo[i].crc = 0;
+    }
   }
 
 
@@ -1571,14 +1578,6 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
 
 
   for (i = bkstart; i <= bkend; ++i) {
-    size_t start = blockinfo[i].start;
-    size_t end   = blockinfo[i].end;
-    size_t blocksize = 0;
-    unsigned long blockcrc = 0;
-    if((options->mode & 0x0100) && !(options->numthreads == 0 && (options->mode & 0x0010))) {
-      blocksize = end - start;
-      blockcrc = CRC(in + start, blocksize);
-    }
     do {
       neednext=0;
       for(;threnum<numthreads;) {
@@ -1642,8 +1641,8 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             t[threnum].beststats = 0;
             t[threnum].startiteration = 0;
             if(options->mode & 0x0100) {
-              statsdb[threnum].blocksize = blocksize;
-              statsdb[threnum].blockcrc = blockcrc;
+              statsdb[threnum].blocksize = blockinfo[i].len;
+              statsdb[threnum].blockcrc = blockinfo[i].crc;
               if(!(options->mode & 0x0010)) {
                 statsdb[threnum].mode = options->mode & 0xF;
                 statsdb[threnum].beststats = Zmalloc(sizeof(SymbolStats));
@@ -1655,8 +1654,8 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               }
             }            
             t[threnum].options = options;
-            t[threnum].start = start;
-            t[threnum].end = end;
+            t[threnum].start = blockinfo[i].start;
+            t[threnum].end = blockinfo[i].end;
             t[threnum].in = in;
             t[threnum].cost = 0;
             t[threnum].allstatscontrol = 0;
