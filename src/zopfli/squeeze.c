@@ -635,7 +635,7 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
 
   *startiteration = i;
 
-  if(s->options->verbose==3) {
+  if(!s->options->numthreads && s->options->verbose==3) {
     fprintf(stderr, "\n");
   }
 

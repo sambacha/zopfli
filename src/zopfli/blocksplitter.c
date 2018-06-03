@@ -468,8 +468,9 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
               size_t z;
               ++threadsrunning;
               for(z=0;z<4;++z) {
-                fprintf(stderr,"TESTREC | THR %2d | BSR %4d | BLK %4d    \r",
-                        (unsigned int)x,(unsigned int)t[x].minrec,(unsigned int)t[x].numblocks);
+                if(options->verbose>2)
+                  fprintf(stderr,"TESTREC | THR %2d | BSR %4d | BLK %4d    \r",
+                          (unsigned int)x,(unsigned int)t[x].minrec,(unsigned int)t[x].numblocks);
                 usleep(250000);
               }
             }
@@ -488,7 +489,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
           totalcost += EstimateCost(options, lz77, lstart, lend);
         }
         if(totalcost < totalcost2) {
-          if(options->verbose>0) {
+          if(options->verbose>2) {
             fprintf(stderr, "      [BSR: %d] Estimated Cost: %lu bit",t[x].minrec,(unsigned long)totalcost);
             if(totalcost2 != ZOPFLI_LARGE_FLOAT)
               fprintf(stderr, " < %lu bit",(unsigned long)totalcost2);

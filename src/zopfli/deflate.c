@@ -1498,7 +1498,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
   cpu_set_t *cpuset = Zmalloc(sizeof(cpu_set_t) * options->affamount);
 #endif
   zfloat *tempcost = Zmalloc(sizeof(*tempcost) * (bkend+1));
-  unsigned char lastthread = 0;
+  unsigned char nomoredata = 0;
   unsigned char* blockdone = Zcalloc(bkend+1,sizeof(unsigned char));
 #ifdef _WIN32
   HANDLE *thr = Zmalloc(sizeof(HANDLE) * numthreads);
@@ -1609,7 +1609,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
                 if(calci>options->numiterations) calci=options->numiterations;
               }
               thrprogress = (int)(((zfloat)t[showthread].iterations.iteration / (zfloat)calci) * 100);
-              usleep(200000);
+              usleep(250000);
               fprintf(stderr,"%3d%% THR %2d | BLK %4d | BST %5d: %d b | ITR %5d: %d b   \r",
                       thrprogress, showthread, ((unsigned int)t[showthread].iterations.block+1),
                       t[showthread].iterations.bestiteration, t[showthread].iterations.bestcost,
@@ -1633,11 +1633,15 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             ++threnum;
             if(threnum>=numthreads)
               threnum=0;
+          } else {
+            usleep(50000);
+            ++threnum;
+            if(threnum>=numthreads)
+              threnum=0;
           }
         }
-        usleep(50000);
         if(t[threnum].is_running==0) {
-          if(lastthread == 0) {
+          if(nomoredata == 0) {
             t[threnum].beststats = 0;
             t[threnum].startiteration = 0;
             if(options->mode & 0x0100) {
@@ -1687,7 +1691,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             }
             ++threadsrunning;
             if(i>=bkend)
-              lastthread = 1;
+              nomoredata = 1;
             else
               neednext=1;
           }
@@ -1739,7 +1743,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
           ++threnum;
           if(threnum>=numthreads) threnum=0;
           if(threadsrunning==0 &&
-            (neednext==1 || lastthread==1)) break;
+            (neednext==1 || nomoredata==1)) break;
         }
         if(neednext==1) break;
       } 
