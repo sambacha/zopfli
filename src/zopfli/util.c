@@ -48,8 +48,15 @@ void ZopfliInitOptions(ZopfliOptions* options) {
 
 void *Zmalloc(size_t size) {
   void *ptr;
+#if ZOPFLI_MALLOC_RETRY > 0
+  size_t x = ZOPFLI_MALLOC_RETRY;
+#endif
   if(size == 0) return NULL;
+#if ZOPFLI_MALLOC_RETRY > 0
+  for(;x>0;--x) {
+#else
   for(;;) {
+#endif
     ptr = malloc(size);
     if(ptr == NULL) {
       unsigned long x = (unsigned long)size;
@@ -64,8 +71,15 @@ void *Zmalloc(size_t size) {
 
 void *Zcalloc(size_t ElemAm, size_t ElemSize) {
   void *ptr;
+#if ZOPFLI_MALLOC_RETRY > 0
+  size_t x = ZOPFLI_MALLOC_RETRY;
+#endif
   if(ElemSize == 0 || ElemAm == 0) return NULL;
+#if ZOPFLI_MALLOC_RETRY > 0
+  for(;x>0;--x) {
+#else
   for(;;) {
+#endif
     ptr = calloc(ElemAm, ElemSize);
     if(ptr == NULL) {
       unsigned long x = (unsigned long)(ElemAm * ElemSize);
@@ -80,8 +94,15 @@ void *Zcalloc(size_t ElemAm, size_t ElemSize) {
 
 void *Zrealloc(void* ptr, size_t size) {
   void *newPtr;
+#if ZOPFLI_MALLOC_RETRY > 0
+  size_t x = ZOPFLI_MALLOC_RETRY;
+#endif
   if(size == 0) return NULL;
+#if ZOPFLI_MALLOC_RETRY > 0
+  for(;x>0;--x) {
+#else
   for(;;) {
+#endif
     newPtr = realloc(ptr, size);
     if(newPtr == NULL) {
       unsigned long x = (unsigned long)size;

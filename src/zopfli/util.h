@@ -132,6 +132,18 @@ Tested by copressing lodepng.cpp.
 #define ZOPFLI_SHORTCUT_LONG_REPETITIONS 1
 
 /*
+Malloc wrapper loop limiter. By default (0) the malloc will retry infinite amount
+of times as we still have hope to find enough memory, for example when other threads
+finish their work. For libzopfli it will try only once.
+Set to anything larger than 0 to limit malloc tries.
+*/
+#ifdef NLIB
+#define ZOPFLI_MALLOC_RETRY 0
+#else
+#define ZOPFLI_MALLOC_RETRY 1
+#endif
+
+/*
 Whether to use lazy matching in the greedy LZ77 implementation. This gives a
 better result of ZopfliLZ77Greedy, but the effect this has on the optimal LZ77
 varies from file to file. Moved, to be used as command line option.
