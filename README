@@ -45,7 +45,7 @@ Description of new commands list in Zopfli KrzYmod:
 
    Maximum unsuccessful iterations after last best to try in order to 
    consider the result as satisfying. This switch relies on maximum
-   iterations to use (--i) and should always be lower that this value.
+   iterations to use (--i) and should always be lower than this value.
    This parameter is automatically set to 1 when CTRL+C is pressed to
    finish the work as soon as possible while still allowing some reductions
    to hit in.
