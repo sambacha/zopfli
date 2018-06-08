@@ -877,7 +877,7 @@ int main(int argc, char* argv[]) {
           "  --all         use 16 combinations of 4 switches below\n"
           "  --brotli      use Brotli Huffman optimization\n"
           "  --lazy        lazy matching in Greedy LZ77\n"
-          "  --ohh         optymize huffman header\n"
+          "  --ohh         optimize huffman header\n"
           "  --rc          reverse counts ordering in bit length calculations\n\n");
       fprintf(stderr,
           " *********** OUTPUT CONTROL **********\n"
