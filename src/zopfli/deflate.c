@@ -1671,7 +1671,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             t[threnum].is_running = 1;
             if(options->numthreads) {
 #ifdef _WIN32
-              thr[threnum] = CreateThread(NULL, 0, threading, (void *)&t[threnum], 0, NULL);
+              thr[threnum] = CreateThread(NULL, 2097152, threading, (void *)&t[threnum], 0, NULL);
 #else
               pthread_create(&thr[threnum], &(thr_attr[threnum]), threading, (void *)&t[threnum]);
 #endif

@@ -527,7 +527,7 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
                          SymbolStats** foundbest, unsigned int* startiteration) {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
-  unsigned short* length_array = Zmalloc(sizeof(unsigned short) * (blocksize + 1));
+  unsigned short* length_array = Zmalloc(sizeof(*length_array) * (blocksize + 1));
   unsigned short* path = 0;
   size_t pathsize = 0;
   size_t pathsizebuff = 0;
@@ -536,7 +536,7 @@ zfloat ZopfliLZ77Optimal(ZopfliBlockState *s,
   unsigned int i = *startiteration, j;
   unsigned int fails = 0, lastrandomstep = 0;
   zfloat cost;
-  zfloat *costs = Zmalloc(sizeof(zfloat) * (blocksize + 1));
+  zfloat *costs = Zmalloc(sizeof(*costs) * (blocksize + 1));
   zfloat bestcost = ZOPFLI_LARGE_FLOAT;
   zfloat lastcost = 0;
   zfloat statsimp = (zfloat)s->options->statimportance/(zfloat)100;
