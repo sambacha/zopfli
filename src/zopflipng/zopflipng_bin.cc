@@ -137,7 +137,7 @@ void ShowHelp() {
          "--nosplitlast              don't use splitting last\n"
          "--slowdyn=[#]              LZ77 Optimal in splitter, # - mui\n"
          "--slowfix                  always use expensive fixed block calculations\n"
-         "--testrec(=[#])            test recursion, # - LZ77Optimal with this mui\n"
+         "--testrec(=[#])            test recursion, # - 0 or testrec mui (d: 20)\n"
          " ********** COMPRESSION MODE *********\n"
          "--zopfli_filters           use zopfli instead of zlib for every test\n"
          "--all                      use 16 combinations per block and take smallest size\n"
