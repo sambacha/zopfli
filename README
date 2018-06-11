@@ -117,13 +117,18 @@ Description of new commands list in Zopfli KrzYmod:
    After enabling this switch the recursion varies and is calculated by
    lz77 store range size / bsr. For example 900 / 9 = 100, 450 / 9 = 50.
 
-18. --testrec
+18. --testrec#
 
    Tries recursion settings of 2 - [up to 20th failed attempt after last best]
    in splitter before compression to find split points which provide lower
    estimate size basing on parameters used to calculate them.
    When --maxrec is used it will try values of power of 2 with the
    maximum being below the lz77 store size down to 2.
+   Passing # (optional) will change the default 20 failed attempts to other
+   number. If 0 is used it will divide last best estimated cost by 16384
+   and set it as maximum number of tries to check with an additional 20
+   failed attempts if it exceeds this maximum number. # has no effect
+   when --maxrec is used.
 
 19. --bsr#
 

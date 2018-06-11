@@ -861,7 +861,7 @@ int main(int argc, char* argv[]) {
           "  --slowdyn#    LZ77 Optimal in splitter, # - mui\n"
           "  --slowfix     always use expensive fixed block calculations\n");
       fprintf(stderr,
-          "  --testrec#    test recursion, # - LZ77Optimal with this mui\n\n");
+          "  --testrec#    test recursion, # - 0 or testrec mui (d: 20)\n\n");
       fprintf(stderr,
           " ******* MANUAL BLOCK SPLITTER *******\n"
           "  --b#          block size in bytes\n"

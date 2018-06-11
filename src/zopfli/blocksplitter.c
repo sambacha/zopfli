@@ -367,7 +367,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
     size_t numblocks = 1;
     unsigned int minrec;
     zfloat totalcost2 = ZOPFLI_LARGE_FLOAT;
-    unsigned int stopbsr = 20;
+    unsigned long stopbsr = 20;
 
 #ifndef _WIN32
     for(x=0;x<options->affamount;++x) {
@@ -497,7 +497,15 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
           }
           totalcost2 = totalcost;
           numblocks = t[x].numblocks;
-          stopbsr = minrec + 20;
+          if(options->testrecmui == 0) {
+            if(minrec < ((unsigned long)totalcost / 16384)) {
+              stopbsr = ((unsigned long)totalcost / 16384);
+            } else {
+              stopbsr = minrec + 20;
+            }
+          } else {
+            stopbsr = minrec + options->testrecmui;
+          }
           free(*splitpoints);
           *splitpoints = 0;
           *npoints = 0;
@@ -544,34 +552,20 @@ void ZopfliBlockSplit(const ZopfliOptions* options,
   size_t* lz77splitpoints = 0;
   size_t nlz77points = 0;
   ZopfliLZ77Store store;
-  ZopfliOptions* options2 = Zmalloc(sizeof(ZopfliOptions));
+  ZopfliHash hash;
+  ZopfliHash* h = &hash;
 
-  memcpy(options2,options,sizeof(ZopfliOptions));
-
-  options2->numthreads = 0;
-  options2->numiterations = 0;
+  ZopfliMallocHash(ZOPFLI_WINDOW_SIZE, h);
 
   ZopfliInitLZ77Store(in, &store);
-  ZopfliInitBlockState(options2, instart, inend, 0, &s);
+  ZopfliInitBlockState(options, instart, inend, 0, &s);
 
   *npoints = 0;
   *splitpoints = 0;
 
   /* Unintuitively, Using a simple LZ77 method here instead of ZopfliLZ77Optimal
   results in better blocks. */
-  if(options->testrecmui == 0) {
-    ZopfliHash hash;
-    ZopfliHash* h = &hash;
-    ZopfliMallocHash(ZOPFLI_WINDOW_SIZE, h);
-    ZopfliLZ77Greedy(&s, in, instart, inend, &store, h);
-    ZopfliCleanHash(h);
-  } else {
-    ZopfliIterations iterations;
-    unsigned iter = 0;
-    mui = options->testrecmui;
-    ZopfliLZ77Optimal(&s, in, instart, inend, &store, &iterations, NULL, &iter);
-    mui = 0;
-  }
+  ZopfliLZ77Greedy(&s, in, instart, inend, &store, h);
   ZopfliBlockSplitLZ77(options,
                        &store, maxblocks,
                        &lz77splitpoints, &nlz77points);
@@ -589,8 +583,8 @@ void ZopfliBlockSplit(const ZopfliOptions* options,
   }
   assert(*npoints == nlz77points);
 
-  free(options2);
   free(lz77splitpoints);
+  ZopfliCleanHash(h);
   ZopfliCleanBlockState(&s);
   ZopfliCleanLZ77Store(&store);
 }
