@@ -120,7 +120,7 @@ void ShowHelp() {
          " ************** GENERAL **************\n"
          "-d                         don't save any files (for benchmarking)\n"
          "-y                         always overwrite files\n"
-         "--v=[#]                    verbose level for zopfli (0-5, d:2)\n"
+         "--v=[#]                    verbose level for zopfli (0-6, d:2)\n"
          "--prefix=[*]               adds a prefix to output filenames\n"
          "--always_zopflify          always output the image even if bigger\n\n"
          " ********** COMPRESSION TIME *********\n"

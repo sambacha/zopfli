@@ -1351,6 +1351,8 @@ typedef struct ZopfliThread {
   int bestperblock;
 
   int allstatscontrol;
+  
+  int mode;
 
   unsigned int startiteration;
 
@@ -1392,6 +1394,7 @@ static void *threading(void *a) {
     if(b->options->mode & 0x0010) {
       free(b->beststats);
       b->beststats = 0;
+      b->mode = tries;
       o.mode = tries + (o.mode & 0xFFF0);
       b->startiteration = 0;
       if(b->options->mode & 0x0100) {
@@ -1415,6 +1418,8 @@ static void *threading(void *a) {
           }
         }
       }
+    } else {
+      b->mode = (o.mode & 0xF);
     }
 
     ZopfliInitBlockState(&o, b->start, b->end, 1, &s);
@@ -1430,6 +1435,19 @@ static void *threading(void *a) {
       ZopfliInitLZ77Store(b->in, &b->store);
       ZopfliCopyLZ77Store(&store,&b->store);
       b->bestperblock = o.mode;
+      if(b->options->verbose == 6) {
+        fprintf(stderr,"      [BLK: %d | MODE: %s%s%s%s] Best: %lu bit",
+                ((unsigned int)b->iterations.block+1),
+                (b->mode & 0x8)? "1" : "0",
+                (b->mode & 0x4)? "1" : "0",
+                (b->mode & 0x2)? "1" : "0",
+                (b->mode & 0x1)? "1" : "0",
+                (unsigned long)tempcost);
+        if(b->cost!=0) {
+            fprintf(stderr," < %lu bit",(unsigned long)b->cost);
+        }
+        fprintf(stderr,"             \n");
+      }
       b->cost = tempcost;
     }
     ZopfliCleanLZ77Store(&store);
@@ -1610,10 +1628,14 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               }
               thrprogress = (int)(((zfloat)t[showthread].iterations.iteration / (zfloat)calci) * 100);
               usleep(250000);
-              fprintf(stderr,"%3d%% THR %2d | BLK %4d | BST %5d: %d b | ITR %5d: %d b   \r",
+              fprintf(stderr,"%3d%% T:%2d | B:%4d | M:%s%s%s%s | I:%5d (%d) - %d (%d) b      \r",
                       thrprogress, showthread, ((unsigned int)t[showthread].iterations.block+1),
-                      t[showthread].iterations.bestiteration, t[showthread].iterations.bestcost,
-                      t[showthread].iterations.iteration, t[showthread].iterations.cost);
+                      (t[showthread].mode & 0x8)? "1" : "0",
+                      (t[showthread].mode & 0x4)? "1" : "0",
+                      (t[showthread].mode & 0x2)? "1" : "0",
+                      (t[showthread].mode & 0x1)? "1" : "0",
+                      t[showthread].iterations.iteration, t[showthread].iterations.bestiteration,
+                      t[showthread].iterations.cost, t[showthread].iterations.bestcost);
             } else {
               ++showthread;
               if(showthread>=numthreads)
@@ -1663,6 +1685,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             t[threnum].in = in;
             t[threnum].cost = 0;
             t[threnum].allstatscontrol = 0;
+            t[threnum].mode = 0;
             t[threnum].iterations.block = blockinfo[i].pos;
             t[threnum].iterations.bestcost = 0;
             t[threnum].iterations.cost = 0;

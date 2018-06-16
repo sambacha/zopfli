@@ -845,7 +845,7 @@ int main(int argc, char* argv[]) {
           " ************** GENERAL **************\n"
           "  --dir         accept directory as input, requires: --zip\n"
           "  --h           shows this help (--?, -h, -?)\n"
-          "  --v#          verbose level (0-5, d: 2)\n\n");
+          "  --v#          verbose level (0-6, d: 2)\n\n");
       fprintf(stderr,
           " ********** COMPRESSION TIME *********\n"
           "  --i#          perform # iterations (d: 15; 0 => 4.2 billion)\n"

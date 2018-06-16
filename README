@@ -249,6 +249,7 @@ Description of new commands list in Zopfli KrzYmod:
          and treesize (same functionality as -v in original release),
    * 5 - additionally displays current iteration being processed using same line until
          bit reduction occurs.
+   * 6 - display best block result, useful only with --all
 
 ------------------------------------
 
