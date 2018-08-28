@@ -1206,20 +1206,24 @@ typedef struct ZopfliBestStats {
 
 static int StatsDBLoad(ZopfliBestStats* statsdb) {
   FILE *file;
-  size_t b = 0, i = 0;
+  size_t b = 0, i = 0, j = 0;
   unsigned char check;
-  char crc32bits[16];
+  char crc32bits[9];
   char DBfile[32];
   char LocBuf[56];
   unsigned char sizetsize = sizeof(size_t);
   sprintf(crc32bits,"%08lx",statsdb->blockcrc);
   sprintf(DBfile,"%x-%lu.dat",statsdb->mode,(unsigned long)statsdb->blocksize);
   sprintf(LocBuf,"ZopfliDB");
-  while(i<8) {
-    sprintf(LocBuf,"%s/%c",LocBuf,crc32bits[i++]);
-    sprintf(LocBuf,"%s%c",LocBuf,crc32bits[i++]);
+  while(i<(sizeof(crc32bits) / sizeof(crc32bits[0]))) {
+    if((i % 2) == 0) {
+        LocBuf[8+i+j] = '/';
+        ++j;
+    }
+    LocBuf[8+i+j] = crc32bits[i];
+    ++i;
   }
-  sprintf(LocBuf,"%s/%s",LocBuf,DBfile);
+  sprintf(LocBuf+21,"%s",DBfile);
   file = fopen(LocBuf, "rb");
   if(!file) return 0;
   b += fread(&check,sizeof(check),1,file);
@@ -1259,9 +1263,9 @@ static int DoDir(char* dir) {
 
 static int StatsDBSave(ZopfliBestStats* statsdb) {
   FILE *file;
-  size_t b = 0, i = 0;
+  size_t b = 0, i = 0, j = 0;
   unsigned char check = BESTSTATSDBVER;
-  char crc32bits[16];
+  char crc32bits[9];
   char DBfile[32];
   char LocBuf[56];
   unsigned char sizetsize = sizeof(size_t);
@@ -1270,13 +1274,17 @@ static int StatsDBSave(ZopfliBestStats* statsdb) {
   sprintf(crc32bits,"%08lx",statsdb->blockcrc);
   sprintf(DBfile,"%x-%lu.dat",statsdb->mode,(unsigned long)statsdb->blocksize);
   sprintf(LocBuf,"ZopfliDB");
-  if(!DoDir(LocBuf)) return 0;
-  while(i<8) {
-    sprintf(LocBuf,"%s/%c",LocBuf,crc32bits[i++]);
-    sprintf(LocBuf,"%s%c",LocBuf,crc32bits[i++]);
-    if(!DoDir(LocBuf)) return 0;
+  while(i<(sizeof(crc32bits) / sizeof(crc32bits[0]))) {
+    if((i % 2) == 0) {
+        LocBuf[8+i+j] = 0;
+        if(!DoDir(LocBuf)) return 0;
+        LocBuf[8+i+j] = '/';
+        ++j;
+    }
+    LocBuf[8+i+j] = crc32bits[i];
+    ++i;
   }
-  sprintf(LocBuf,"%s/%s",LocBuf,DBfile);
+  sprintf(LocBuf+21,"%s",DBfile);
   file = fopen(LocBuf, "wb");
   if(!file) return 0;
   for(i = 0; i < ZOPFLI_NUM_LL; ++i)
@@ -1402,7 +1410,7 @@ static void *threading(void *a) {
           /* Racing condition prevention */
           b->allstatscontrol = tries + 0x0100;
           do {
-            usleep(50000);
+            usleep(10000);
           } while(b->allstatscontrol & 0x0100);
         } else {
           /* No SLAVE threads, work done by MASTER thread */
@@ -1457,7 +1465,7 @@ static void *threading(void *a) {
         /* Racing condition prevention */
         b->allstatscontrol = tries + 0x0200;
         do {
-          usleep(50000);
+          usleep(10000);
         } while(b->allstatscontrol & 0x0200);
       } else {
         /* No SLAVE threads, work done by MASTER thread */
@@ -1603,7 +1611,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
           if(options->mode & 0x0010) {
               size_t xx = 0;
               for(;xx < numthreads;++xx) {
-                  if(t[threnum].allstatscontrol & 0x0100) {
+                  if(t[xx].allstatscontrol & 0x0100) {
                     statsdb[xx].mode = t[xx].allstatscontrol & 0xF;
                     statsdb[xx].beststats = Zmalloc(sizeof(SymbolStats));
                     InitStats(statsdb[xx].beststats);
@@ -1633,7 +1641,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
                 if(calci>options->numiterations) calci=options->numiterations;
               }
               thrprogress = (int)(((zfloat)t[showthread].iterations.iteration / (zfloat)calci) * 100);
-              usleep(250000);
+              usleep(125000);
               fprintf(stderr,"%3d%% T:%2d | B:%4d | M:%s%s%s%s | I:%5d (%d) - %d (%d) b      \r",
                       thrprogress, showthread, ((unsigned int)t[showthread].iterations.block+1),
                       (t[showthread].mode & 0x8)? "1" : "0",
@@ -1648,7 +1656,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
                 showthread=0;
               showcntr=0;
             }
-            if(showcntr>4) {
+            if(showcntr>8) {
               if(threadsrunning>1) {
                 ++showthread;
                 if(showthread>=numthreads)
