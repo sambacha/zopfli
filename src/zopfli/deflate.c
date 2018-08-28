@@ -1402,7 +1402,7 @@ static void *threading(void *a) {
           /* Racing condition prevention */
           b->allstatscontrol = tries + 0x0100;
           do {
-            usleep(100000);
+            usleep(50000);
           } while(b->allstatscontrol & 0x0100);
         } else {
           /* No SLAVE threads, work done by MASTER thread */
@@ -1457,7 +1457,7 @@ static void *threading(void *a) {
         /* Racing condition prevention */
         b->allstatscontrol = tries + 0x0200;
         do {
-          usleep(100000);
+          usleep(50000);
         } while(b->allstatscontrol & 0x0200);
       } else {
         /* No SLAVE threads, work done by MASTER thread */
@@ -1600,24 +1600,30 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
       neednext=0;
       for(;threnum<numthreads;) {
         if(t[threnum].is_running==1) {
-          if(t[threnum].allstatscontrol & 0x0100) {
-            statsdb[threnum].mode = t[threnum].allstatscontrol & 0xF;
-            statsdb[threnum].beststats = Zmalloc(sizeof(SymbolStats));
-            InitStats(statsdb[threnum].beststats);
-            if(StatsDBLoad(&statsdb[threnum])) {
-              t[threnum].beststats = statsdb[threnum].beststats;
-              t[threnum].startiteration = statsdb[threnum].startiteration;
-            }
-            t[threnum].allstatscontrol = 0;
-          } else if(t[threnum].allstatscontrol & 0x0200) {
-            statsdb[threnum].beststats = t[threnum].beststats;
-            statsdb[threnum].startiteration = t[threnum].startiteration;
-            StatsDBSave(&statsdb[threnum]);
-            FreeStats(statsdb[threnum].beststats);
-            free(statsdb[threnum].beststats);
-            t[threnum].beststats = 0;
-            t[threnum].allstatscontrol = 0;
-          } else if(options->verbose>2) {
+          if(options->mode & 0x0010) {
+              size_t xx = 0;
+              for(;xx < numthreads;++xx) {
+                  if(t[threnum].allstatscontrol & 0x0100) {
+                    statsdb[xx].mode = t[xx].allstatscontrol & 0xF;
+                    statsdb[xx].beststats = Zmalloc(sizeof(SymbolStats));
+                    InitStats(statsdb[xx].beststats);
+                    if(StatsDBLoad(&statsdb[xx])) {
+                      t[xx].beststats = statsdb[xx].beststats;
+                      t[xx].startiteration = statsdb[xx].startiteration;
+                    }
+                    t[xx].allstatscontrol = 0;
+                  } else if(t[xx].allstatscontrol & 0x0200 && t[xx].beststats != 0) {
+                    statsdb[xx].beststats = t[xx].beststats;
+                    statsdb[xx].startiteration = t[xx].startiteration;
+                    StatsDBSave(&statsdb[xx]);
+                    FreeStats(statsdb[xx].beststats);
+                    free(statsdb[xx].beststats);
+                    t[xx].beststats = 0;
+                    t[xx].allstatscontrol = 0;
+                  }
+              }
+          }
+          if(options->verbose>2) {
             if(t[showthread].is_running==1) {
               unsigned calci, thrprogress;
               if(mui==0) {
