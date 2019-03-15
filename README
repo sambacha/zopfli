@@ -58,7 +58,7 @@ Description of new commands list in Zopfli KrzYmod:
 
 7. --ohh
 
-   Use optimized Huffman Headers which was programmed by Frédéric Kayser.
+   Use optimized Huffman Headers which was programmed by FrÃ©dÃ©ric Kayser.
    This option changes how Huffman trees are encoded in dynamic blocks.
    It records 8 as 4+4 and 7 as 4+3 instead of 6+single+single and 6+single.
    Enabling it usually improves compression by a few bits per block.
@@ -76,7 +76,7 @@ Description of new commands list in Zopfli KrzYmod:
 10. --all
 
    Run 16 cominations of --lazy, --ohh, --brotli and --rc per block and pick
-   smallest results. This switch is depreciated and may be removed or changed
+   smallest results. This switch is deprecated and may be removed or changed
    in the future. Every combination should be tested separately on each zopfli run.
 
 11. --n#
