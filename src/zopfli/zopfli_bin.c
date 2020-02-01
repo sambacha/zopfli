@@ -184,12 +184,11 @@ static char StringsEqual(const char* str1, const char* str2) {
 Output to stdout.
 */
 static void ConsoleOutput(const unsigned char* in, size_t insize) {
-  size_t i;
   /* Windows workaround for stdout output. */
 #if _WIN32
   _setmode(_fileno(stdout), _O_BINARY);
 #endif
-  for (i = 0; i < insize; i++) printf("%c", in[i]);
+  fwrite(in, 1, insize, stdout);
 #if _WIN32
   _setmode(_fileno(stdout), _O_TEXT);
 #endif

@@ -1,7 +1,7 @@
 /*
 Copyright 2011 Google Inc. All Rights Reserved.
 Copyright 2015 Frédéric Kayser. All Rights Reserved.
-Copyright 2018 Mr_KrzYch00. All Rights Reserved.
+Copyright 2020 Mr_KrzYch00. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1538,7 +1538,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
 
   ZopfliBlockInfo *blockinfo     = Zmalloc(sizeof(ZopfliBlockInfo) * (bkend+1));
   ZopfliBlockInfo *tempblockinfo = Zmalloc(sizeof(ZopfliBlockInfo));
-  size_t processedbytes = 0;
+  size_t processedbytes = instart;
   size_t processedblocks = 0;
 
 #ifndef _WIN32
@@ -1737,7 +1737,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             threnum=0;
         }
         if(t[threnum].is_running==2) {
-          processedbytes += instart + t[threnum].end - t[threnum].start;
+          processedbytes += t[threnum].end - t[threnum].start;
           ++processedblocks;
           PrintProgress(v, processedbytes, inend, processedblocks, t[threnum].iterations.block, bkend);
           if(options->mode & 0x0010) {
@@ -1942,7 +1942,7 @@ DLL_PUBLIC void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int f
 
         if(npoints2 > 0 && splitpoints_uncompressed2==0) {
           size_t npointstemp = 0;
-          size_t postemp = 0;
+          size_t postemp = instart;
           for (i = 0; i < lz77.size; ++i) {
             size_t length = lz77.dists[i] == 0 ? 1 : lz77.litlens[i];
             if (splitpoints2[npointstemp] == i) {
