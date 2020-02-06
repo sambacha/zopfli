@@ -73,7 +73,6 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
     size_t i;
     for (i = start; i < end; i++) {
       zfloat v = f(i, context);
-      if(c->options->verbose>4) fprintf(stderr,"%lu \r",(unsigned long)(size--));
       if (v < best) {
         best = v;
         result = i;
@@ -103,7 +102,6 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
       for (i = 0; i < max_recursion; i++) {
         p[i] = start + (i + 1) * ((end - start) / (max_recursion + 1));
         vp[i] = f(p[i], context);
-        if(c->options->verbose>4) fprintf(stderr,"%lu \r",(unsigned long)(max_recursion - i));
       }
       besti = 0;
       best = vp[0];

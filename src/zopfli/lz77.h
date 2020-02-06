@@ -65,6 +65,7 @@ typedef struct ZopfliLZ77Store {
 void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store);
 void ZopfliResetLZ77Store(ZopfliLZ77Store* store);
 void ZopfliCleanLZ77Store(ZopfliLZ77Store* store);
+void ZopfliReallocLZ77Store(size_t size, ZopfliLZ77Store* store);
 void ZopfliCopyLZ77Store(const ZopfliLZ77Store* source, ZopfliLZ77Store* dest);
 void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
                            size_t pos, ZopfliLZ77Store* store);

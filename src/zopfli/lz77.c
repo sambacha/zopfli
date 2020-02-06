@@ -26,6 +26,10 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <assert.h>
 #include <string.h>
 
+static size_t CeilDiv(size_t a, size_t b) {
+  return (a + b - 1) / b;
+}
+
 void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store) {
   store->size = 0;
   store->litlens = 0;
@@ -53,8 +57,15 @@ void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
   free(store->litlens);
 }
 
-static size_t CeilDiv(size_t a, size_t b) {
-  return (a + b - 1) / b;
+void ZopfliReallocLZ77Store(size_t size, ZopfliLZ77Store* store) {
+  store->litlens   = Zrealloc(store->litlens  ,size * sizeof(*store->litlens));
+  store->dists     = Zrealloc(store->dists    ,size * sizeof(*store->dists));
+  store->pos       = Zrealloc(store->pos      ,size * sizeof(*store->pos));
+  store->ll_symbol = Zrealloc(store->ll_symbol,size * sizeof(*store->ll_symbol));
+  store->d_symbol  = Zrealloc(store->d_symbol ,size * sizeof(*store->d_symbol));
+  store->ll_counts = Zrealloc(store->ll_counts,(size + ZOPFLI_NUM_LL) * sizeof(*store->ll_counts));
+  store->d_counts  = Zrealloc(store->d_counts ,(size + ZOPFLI_NUM_D) * sizeof(*store->d_counts));
+  store->buffer    = size;
 }
 
 void ZopfliCopyLZ77Store(
@@ -100,16 +111,8 @@ void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
   size_t llstart = ZOPFLI_NUM_LL * (origsize / ZOPFLI_NUM_LL);
   size_t dstart = ZOPFLI_NUM_D * (origsize / ZOPFLI_NUM_D);
 
-  if(store->buffer == origsize) {
-    store->buffer = origsize + ZOPFLI_REALLOC_BUFFER;
-    store->ll_counts = Zrealloc(store->ll_counts,(store->buffer + ZOPFLI_NUM_LL) * sizeof(*store->ll_counts));
-    store->d_counts  = Zrealloc(store->d_counts,(store->buffer + ZOPFLI_NUM_D) * sizeof(*store->d_counts));
-    store->litlens   = Zrealloc(store->litlens,store->buffer * sizeof(*store->litlens));
-    store->dists     = Zrealloc(store->dists,store->buffer * sizeof(*store->dists));
-    store->pos       = Zrealloc(store->pos,store->buffer * sizeof(*store->pos));
-    store->ll_symbol = Zrealloc(store->ll_symbol,store->buffer * sizeof(*store->ll_symbol));
-    store->d_symbol  = Zrealloc(store->d_symbol,store->buffer * sizeof(*store->d_symbol));
-  }
+  if(store->buffer == origsize)
+    ZopfliReallocLZ77Store(origsize + ZOPFLI_REALLOC_BUFFER, store);
 
   /* Everytime the index wraps around, a new cumulative histogram is made: we're
   keeping one histogram value per LZ77 symbol rather than a full histogram for

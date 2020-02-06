@@ -1754,18 +1754,27 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
           }
           t[threnum].beststats = 0;
           if(nextblock==t[threnum].iterations.block) {
+            size_t realloc_size = 0;
             *totalcost += t[threnum].cost;
             ZopfliAppendLZ77Store(&t[threnum].store, lz77);
             ZopfliCleanLZ77Store(&t[threnum].store);
             if(t[threnum].iterations.block < bkend) (*splitpoints)[t[threnum].iterations.block] = lz77->size;
             for(n=(nextblock+1);n<=i;++n) {
               if(blockdone[n]==0) break;
-               ZopfliAppendLZ77Store(&tempstore[n], lz77);
+              realloc_size += (&tempstore[n])->size;
+            }
+            if(realloc_size >= ZOPFLI_REALLOC_BUFFER)
+              ZopfliReallocLZ77Store(lz77->size + realloc_size, lz77);
+            for(n=(nextblock+1);n<=i;++n) {
+              if(blockdone[n]==0) break;
+              ZopfliAppendLZ77Store(&tempstore[n], lz77);
               ZopfliCleanLZ77Store(&tempstore[n]);
               if(n < bkend) (*splitpoints)[n] = lz77->size;
               *totalcost += tempcost[n];
               blockdone[n]=0;
               ++nextblock;
+              if(options->verbose>2)
+                fprintf(stderr,"STREAM <= BLOCK: %4d / %4d [%4d]     \r",(unsigned int)(n + 1),(unsigned int)(i + 1),(unsigned int)(bkend + 1));
             }
             ++nextblock;
           } else {
