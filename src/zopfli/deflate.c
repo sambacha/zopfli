@@ -1766,6 +1766,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
               free(statsdb[threnum].beststats);
             }
           }
+          statsdb[threnum].beststats = 0;
           t[threnum].beststats = 0;
           if(nextblock==t[threnum].iterations.block) {
             size_t realloc_size = 0;
@@ -1814,12 +1815,11 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
     size_t x = 0;
     for(;x<numthreads;++x) {
       t[x].is_running = 3;
+      while(t[x].is_running != -1)
+        usleep(50000);
 #ifdef _WIN32
       WaitForSingleObject(thr[x], INFINITE);
       CloseHandle(thr[x]);
-#else
-      while(t[x].is_running != -1)
-        usleep(50000);
 #endif
     }
   }

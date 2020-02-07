@@ -542,12 +542,11 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
       size_t x = 0;
       for(;x<numthreads;++x) {
         t[x].is_running = 3;
+        while(t[x].is_running != -1)
+          usleep(50000);
 #ifdef _WIN32
         WaitForSingleObject(thr[x], INFINITE);
         CloseHandle(thr[x]);
-#else
-        while(t[x].is_running != -1)
-          usleep(50000);
 #endif
       }
     }
