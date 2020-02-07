@@ -338,7 +338,7 @@ static void *BSthreading(void *a) {
     free(done);
 
     b->is_running = 2;
-    while(b->is_running != 1 && b->is_running != 3 && b->options->numthreads) {
+    while(b->is_running != 1 && b->is_running != 3 && b->is_started == 1) {
       usleep(50000);
     }
 
@@ -545,6 +545,9 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
 #ifdef _WIN32
         WaitForSingleObject(thr[x], INFINITE);
         CloseHandle(thr[x]);
+#else
+        while(t[x].is_running != -1)
+          usleep(50000);
 #endif
       }
     }
