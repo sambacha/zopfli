@@ -1346,6 +1346,8 @@ typedef struct ZopfliThread {
 
   int is_running;
 
+  int is_started;
+
   size_t start;
 
   size_t end;
@@ -1379,112 +1381,121 @@ DWORD WINAPI threading(void *a) {
 static void *threading(void *a) {
 #endif
 
-  int tries = 1;
-  size_t blocksize = 0;
-  unsigned long blockcrc = 0;
   ZopfliThread *b = (ZopfliThread *)a;
-  ZopfliLZ77Store store;
-  ZopfliInitLZ77Store(b->in, &b->store);
 
-  if(b->options->mode & 0x0010) {
-    tries=16;
-    if(b->options->numthreads == 0 && (b->options->mode & 0x0100)) {
-      blocksize = b->end - b->start;
-      blockcrc = CRC(b->in + b->start, blocksize);
-    }
-  }
-  do {
-    zfloat tempcost;
-    ZopfliBlockState s;
-    ZopfliOptions o = *(b->options);
-    ZopfliInitLZ77Store(b->in, &store);
-    --tries;
+  while(b->is_running == 1) {
+    int tries = 1;
+    size_t blocksize = 0;
+    unsigned long blockcrc = 0;
+    ZopfliLZ77Store store;
+    ZopfliInitLZ77Store(b->in, &b->store);
+
     if(b->options->mode & 0x0010) {
-      free(b->beststats);
-      b->beststats = 0;
-      b->mode = tries;
-      o.mode = tries + (o.mode & 0xFFF0);
-      b->startiteration = 0;
-      if(b->options->mode & 0x0100) {
+      tries=16;
+      if(b->options->numthreads == 0 && (b->options->mode & 0x0100)) {
+        blocksize = b->end - b->start;
+        blockcrc = CRC(b->in + b->start, blocksize);
+      }
+    }
+    do {
+      zfloat tempcost;
+      ZopfliBlockState s;
+      ZopfliOptions o = *(b->options);
+      ZopfliInitLZ77Store(b->in, &store);
+      --tries;
+      if(b->options->mode & 0x0010) {
+        free(b->beststats);
+        b->beststats = 0;
+        b->mode = tries;
+        o.mode = tries + (o.mode & 0xFFF0);
+        b->startiteration = 0;
+        if(b->options->mode & 0x0100) {
+          if(b->options->numthreads > 0) {
+            /* Racing condition prevention */
+            b->allstatscontrol = tries + 0x0100;
+            do {
+              usleep(50000);
+            } while(b->allstatscontrol & 0x0100);
+          } else {
+            /* No SLAVE threads, work done by MASTER thread */
+            ZopfliBestStats statsdb;
+            statsdb.blocksize = blocksize;
+            statsdb.blockcrc = blockcrc;
+            statsdb.mode = tries;
+            statsdb.beststats = Zmalloc(sizeof(SymbolStats));
+            InitStats(statsdb.beststats);
+            if(StatsDBLoad(&statsdb)) {
+              b->beststats = statsdb.beststats;
+              b->startiteration = statsdb.startiteration;
+            }
+          }
+        }
+      } else {
+        b->mode = (o.mode & 0xF);
+      }
+
+      ZopfliInitBlockState(&o, b->start, b->end, 1, &s);
+
+      ZopfliLZ77Optimal(&s, b->in, b->start, b->end, &store, &b->iterations,
+                      &b->beststats, &b->startiteration);
+      tempcost = ZopfliCalculateBlockSizeAutoType(&o, &store, 0, store.size, 2, 0);
+
+      ZopfliCleanBlockState(&s);
+
+      if(b->cost==0 || tempcost<b->cost) {
+        ZopfliCleanLZ77Store(&b->store);
+        ZopfliInitLZ77Store(b->in, &b->store);
+        ZopfliCopyLZ77Store(&store,&b->store);
+        b->bestperblock = o.mode;
+        if(b->options->verbose == 6) {
+          fprintf(stderr,"      [BLK: %d | MODE: %s%s%s%s] Best: %lu bit",
+                  ((unsigned int)b->iterations.block+1),
+                  (b->mode & 0x8)? "1" : "0",
+                  (b->mode & 0x4)? "1" : "0",
+                  (b->mode & 0x2)? "1" : "0",
+                  (b->mode & 0x1)? "1" : "0",
+                  (unsigned long)tempcost);
+          if(b->cost!=0) {
+              fprintf(stderr," < %lu bit",(unsigned long)b->cost);
+          }
+          fprintf(stderr,"             \n");
+        }
+        b->cost = tempcost;
+      }
+      ZopfliCleanLZ77Store(&store);
+
+      if((b->options->mode & 0x0110) == 0x0110) {
         if(b->options->numthreads > 0) {
           /* Racing condition prevention */
-          b->allstatscontrol = tries + 0x0100;
+          b->allstatscontrol = tries + 0x0200;
           do {
-            usleep(10000);
-          } while(b->allstatscontrol & 0x0100);
+            usleep(50000);
+          } while(b->allstatscontrol & 0x0200);
         } else {
           /* No SLAVE threads, work done by MASTER thread */
           ZopfliBestStats statsdb;
           statsdb.blocksize = blocksize;
           statsdb.blockcrc = blockcrc;
           statsdb.mode = tries;
-          statsdb.beststats = Zmalloc(sizeof(SymbolStats));
-          InitStats(statsdb.beststats);
-          if(StatsDBLoad(&statsdb)) {
-            b->beststats = statsdb.beststats;
-            b->startiteration = statsdb.startiteration;
-          }
+          statsdb.beststats = b->beststats;
+          statsdb.startiteration = b->startiteration;
+          StatsDBSave(&statsdb);
+          FreeStats(statsdb.beststats);
+          free(statsdb.beststats);
+          b->beststats = 0;
         }
       }
-    } else {
-      b->mode = (o.mode & 0xF);
+
+    } while(tries>0);
+
+    b->is_running = 2;
+    while(b->is_running != 1 && b->is_running != 3 && b->options->numthreads) {
+      usleep(50000);
     }
+    
+  }
 
-    ZopfliInitBlockState(&o, b->start, b->end, 1, &s);
-
-    ZopfliLZ77Optimal(&s, b->in, b->start, b->end, &store, &b->iterations,
-                      &b->beststats, &b->startiteration);
-    tempcost = ZopfliCalculateBlockSizeAutoType(&o, &store, 0, store.size, 2, 0);
-
-    ZopfliCleanBlockState(&s);
-
-    if(b->cost==0 || tempcost<b->cost) {
-      ZopfliCleanLZ77Store(&b->store);
-      ZopfliInitLZ77Store(b->in, &b->store);
-      ZopfliCopyLZ77Store(&store,&b->store);
-      b->bestperblock = o.mode;
-      if(b->options->verbose == 6) {
-        fprintf(stderr,"      [BLK: %d | MODE: %s%s%s%s] Best: %lu bit",
-                ((unsigned int)b->iterations.block+1),
-                (b->mode & 0x8)? "1" : "0",
-                (b->mode & 0x4)? "1" : "0",
-                (b->mode & 0x2)? "1" : "0",
-                (b->mode & 0x1)? "1" : "0",
-                (unsigned long)tempcost);
-        if(b->cost!=0) {
-            fprintf(stderr," < %lu bit",(unsigned long)b->cost);
-        }
-        fprintf(stderr,"             \n");
-      }
-      b->cost = tempcost;
-    }
-    ZopfliCleanLZ77Store(&store);
-
-    if((b->options->mode & 0x0110) == 0x0110) {
-      if(b->options->numthreads > 0) {
-        /* Racing condition prevention */
-        b->allstatscontrol = tries + 0x0200;
-        do {
-          usleep(10000);
-        } while(b->allstatscontrol & 0x0200);
-      } else {
-        /* No SLAVE threads, work done by MASTER thread */
-        ZopfliBestStats statsdb;
-        statsdb.blocksize = blocksize;
-        statsdb.blockcrc = blockcrc;
-        statsdb.mode = tries;
-        statsdb.beststats = b->beststats;
-        statsdb.startiteration = b->startiteration;
-        StatsDBSave(&statsdb);
-        FreeStats(statsdb.beststats);
-        free(statsdb.beststats);
-        b->beststats = 0;
-      }
-    }
-
-  } while(tries>0);
-
-  b->is_running = 2;
+  b->is_running = -1;
 
   return 0;
 
@@ -1563,6 +1574,7 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
      pthread_attr_init(&(thr_attr[i]));
      pthread_attr_setdetachstate(&(thr_attr[i]), PTHREAD_CREATE_DETACHED);
 #endif
+     t[i].is_started = 0;
      t[i].is_running = 0;
      t[i].allstatscontrol = 0;
      statsdb[i].beststats = 0;
@@ -1707,17 +1719,20 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
             t[threnum].iterations.bestiteration = 0;
             t[threnum].is_running = 1;
             if(options->numthreads) {
+              if(t[threnum].is_started == 0) {
+                t[threnum].is_started = 1;
 #ifdef _WIN32
-              thr[threnum] = CreateThread(NULL, 2097152, threading, (void *)&t[threnum], 0, NULL);
+                thr[threnum] = CreateThread(NULL, 2097152, threading, (void *)&t[threnum], 0, NULL);
 #else
-              pthread_create(&thr[threnum], &(thr_attr[threnum]), threading, (void *)&t[threnum]);
+                pthread_create(&thr[threnum], &(thr_attr[threnum]), threading, (void *)&t[threnum]);
 #endif
-              if(options->affamount>0) {
+                if(options->affamount>0) {
 #ifdef _WIN32
-                SetThreadAffinityMask(thr[threnum], t[threnum].affmask);
+                  SetThreadAffinityMask(thr[threnum], t[threnum].affmask);
 #else
-                pthread_setaffinity_np(thr[threnum], sizeof(cpu_set_t), &cpuset[t[threnum].affmask]);
+                  pthread_setaffinity_np(thr[threnum], sizeof(cpu_set_t), &cpuset[t[threnum].affmask]);
 #endif
+                }
               }
             } else {
 #ifdef _WIN32
@@ -1794,6 +1809,17 @@ static void ZopfliUseThreads(const ZopfliOptions* options,
         if(neednext==1) break;
       } 
     } while(threadsrunning>0 && neednext==0);
+  }
+
+  if(options->numthreads) {
+    size_t x = 0;
+    for(;x<numthreads;++x) {
+      t[x].is_running = 3;
+#ifdef _WIN32
+      WaitForSingleObject(thr[x], INFINITE);
+      CloseHandle(thr[x]);
+#endif
+    }
   }
 
   free(blockinfo);
@@ -2094,11 +2120,12 @@ DLL_PUBLIC void ZopfliDeflate(const ZopfliOptions* options, int btype, int final
                    const unsigned char* in, size_t insize,
                    unsigned char* bp, unsigned char** out, size_t* outsize,
                    ZopfliPredefinedSplits *sp) {
- size_t offset = *outsize;
+  size_t offset = *outsize;
 #if ZOPFLI_MASTER_BLOCK_SIZE == 0
   ZopfliDeflatePart(options, btype, final, in, 0, insize, bp, out, outsize, options->verbose, sp);
 #else
   size_t i = 0;
+  size_t last_npoint = 0;
   ZopfliPredefinedSplits* originalsp = Zmalloc(sizeof(ZopfliPredefinedSplits));
   ZopfliPredefinedSplits* finalsp = Zmalloc(sizeof(ZopfliPredefinedSplits));
   if(sp != NULL) {
@@ -2114,9 +2141,21 @@ DLL_PUBLIC void ZopfliDeflate(const ZopfliOptions* options, int btype, int final
     i = 0;
   }
   while (i < insize) {
-    int masterfinal = (i + ZOPFLI_MASTER_BLOCK_SIZE >= insize);
-    int final2 = final && masterfinal;
-    size_t size = masterfinal ? insize - i : ZOPFLI_MASTER_BLOCK_SIZE;
+    int masterfinal;
+    int final2;
+    size_t size;
+    size_t MasterBlockSize = ZOPFLI_MASTER_BLOCK_SIZE;
+    if(sp != NULL) {
+      for(; last_npoint < sp->npoints; ++last_npoint) {
+        if((sp->splitpoints[last_npoint] - i) > ZOPFLI_MASTER_BLOCK_SIZE) {
+          MasterBlockSize = sp->splitpoints[last_npoint] - i;
+          break;
+        }
+      }
+    }
+    masterfinal = (i + MasterBlockSize >= insize);
+    final2 = final && masterfinal;
+    size = masterfinal ? insize - i : MasterBlockSize;
     ZopfliDeflatePart(options, btype, final2,
                       in, i, i + size, bp, out, outsize, options->verbose, sp);
     if(sp != NULL) {

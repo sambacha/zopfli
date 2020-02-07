@@ -259,6 +259,8 @@ typedef struct ZopfliBSThread {
 
   int is_running;
 
+  int is_started;
+
   int verbose;
 
   unsigned int minrec;
@@ -279,61 +281,70 @@ static void *BSthreading(void *a) {
 #endif
 
   ZopfliBSThread *b = (ZopfliBSThread *)a;
-  ZopfliOptions* options = Zmalloc(sizeof(*options));
-  unsigned char* done = Zcalloc(b->lz77->size, sizeof(unsigned char));
-  size_t lstart = 0;
-  size_t lend = b->lz77->size;
-  size_t llpos = 0;
-  zfloat splitcost;
-  zfloat origcost;
+  while(b->is_running == 1) {
 
-  b->numblocks = 1;
-  b->splitpoints = 0;
-  b->npoints = 0;
-  memcpy(options,b->options,sizeof(*options));
-  options->verbose = b->verbose;
+    ZopfliOptions* options = Zmalloc(sizeof(*options));
+    unsigned char* done = Zcalloc(b->lz77->size, sizeof(unsigned char));
+    size_t lstart = 0;
+    size_t lend = b->lz77->size;
+    size_t llpos = 0;
+    zfloat splitcost;
+    zfloat origcost;
+
+    b->numblocks = 1;
+    b->splitpoints = 0;
+    b->npoints = 0;
+    memcpy(options,b->options,sizeof(*options));
+    options->verbose = b->verbose;
   
-  for (;;) {
-    SplitCostContext c;
+    for (;;) {
+      SplitCostContext c;
 
-    if(b->maxblocks > 0 && b->numblocks >= b->maxblocks) {
-      break;
+      if(b->maxblocks > 0 && b->numblocks >= b->maxblocks) {
+        break;
+      }
+
+      c.lz77 = b->lz77;
+      c.options = options;
+      c.start = lstart;
+      c.end = lend;
+      assert(lstart < lend);
+      llpos = FindMinimum(SplitCost, &c, lstart + 1, lend, &splitcost, b->minrec);
+
+      assert(llpos > lstart);
+      assert(llpos < lend);
+
+      origcost = EstimateCost(b->options, b->lz77, lstart, lend);
+
+      if (splitcost > origcost || llpos == lstart + 1 || llpos == lend) {
+        done[lstart] = 1;
+      } else {
+        AddSorted(llpos, &(b->splitpoints), &(b->npoints));
+        ++(b->numblocks);
+        if(b->verbose>0) 
+          fprintf(stderr,"      [BSR: %d] Initializing blocks: %lu    \r",b->minrec,(unsigned long)(b->numblocks));
+      }
+
+      if (!FindLargestSplittableBlock(
+          b->lz77->size, done, b->splitpoints, b->npoints, &lstart, &lend)) {
+        break;  /* No further split will probably reduce compression. */
+      }
+
+      if (lend - lstart < 10) {
+        break;
+      }
+    }
+    free(options);
+    free(done);
+
+    b->is_running = 2;
+    while(b->is_running != 1 && b->is_running != 3 && b->options->numthreads) {
+      usleep(50000);
     }
 
-    c.lz77 = b->lz77;
-    c.options = options;
-    c.start = lstart;
-    c.end = lend;
-    assert(lstart < lend);
-    llpos = FindMinimum(SplitCost, &c, lstart + 1, lend, &splitcost, b->minrec);
-
-    assert(llpos > lstart);
-    assert(llpos < lend);
-
-    origcost = EstimateCost(b->options, b->lz77, lstart, lend);
-
-    if (splitcost > origcost || llpos == lstart + 1 || llpos == lend) {
-      done[lstart] = 1;
-    } else {
-      AddSorted(llpos, &(b->splitpoints), &(b->npoints));
-      ++(b->numblocks);
-      if(b->verbose>0) 
-        fprintf(stderr,"      [BSR: %d] Initializing blocks: %lu    \r",b->minrec,(unsigned long)(b->numblocks));
-    }
-
-    if (!FindLargestSplittableBlock(
-        b->lz77->size, done, b->splitpoints, b->npoints, &lstart, &lend)) {
-      break;  /* No further split will probably reduce compression. */
-    }
-
-    if (lend - lstart < 10) {
-      break;
-    }
   }
-  free(options);
-  free(done);
 
-  b->is_running = 0;
+  b->is_running = -1;
 
   return 0;
   
@@ -392,6 +403,8 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
        t[x].options = options;
        t[x].lz77 = lz77;
        t[x].is_running = 0;
+       t[x].is_started = 0;
+       t[x].numblocks  = 0;
        t[x].maxblocks = maxblocks;
        if(options->affamount>0) {
 #ifdef _WIN32
@@ -427,17 +440,20 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
         t[x].minrec = minrec;
         if(numthreads>1) {
           t[x].verbose = 0;
+          if(t[x].is_started == 0) {
+            t[x].is_started = 1;
 #ifdef _WIN32
-          thr[x] = CreateThread(NULL, 0, BSthreading, (void *)&t[x], 0, NULL);
+            thr[x] = CreateThread(NULL, 0, BSthreading, (void *)&t[x], 0, NULL);
 #else
-          pthread_create(&thr[x], &(thr_attr[x]), BSthreading, (void *)&t[x]);
+            pthread_create(&thr[x], &(thr_attr[x]), BSthreading, (void *)&t[x]);
 #endif
-          if(options->affamount>0) {
+            if(options->affamount>0) {
 #ifdef _WIN32
-            SetThreadAffinityMask(thr[x], t[x].affmask);
+              SetThreadAffinityMask(thr[x], t[x].affmask);
 #else
-            pthread_setaffinity_np(thr[x], sizeof(cpu_set_t), &cpuset[t[x].affmask]);
+              pthread_setaffinity_np(thr[x], sizeof(cpu_set_t), &cpuset[t[x].affmask]);
 #endif
+            }
           }
         } else {
           t[x].verbose = options->verbose;
@@ -521,6 +537,17 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
         }
       }
     } while(evalsplit);
+
+    if(numthreads>1) {
+      size_t x = 0;
+      for(;x<numthreads;++x) {
+        t[x].is_running = 3;
+#ifdef _WIN32
+        WaitForSingleObject(thr[x], INFINITE);
+        CloseHandle(thr[x]);
+#endif
+      }
+    }
 
     free(t);
     free(thr);
