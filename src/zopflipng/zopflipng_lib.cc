@@ -459,13 +459,16 @@ unsigned TryOptimize(
                  png_options->ga_population_size);
       break;
     case kStrategyOne:
+      state.encoder.filter_strategy = LFS_ONE;
+      break;
     case kStrategyTwo:
+      state.encoder.filter_strategy = LFS_TWO;
+      break;
     case kStrategyThree:
+      state.encoder.filter_strategy = LFS_THREE;
+      break;
     case kStrategyFour:
-      // Set the filters of all scanlines to that number.
-      filters.resize(h, filterstrategy);
-      state.encoder.filter_strategy = LFS_PREDEFINED;
-      state.encoder.predefined_filters = &filters[0];
+      state.encoder.filter_strategy = LFS_FOUR;
       break;
     case kStrategyPredefined:
       lodepng::getFilterTypes(filters, origfile);
@@ -564,23 +567,23 @@ unsigned TryOptimize(
       && outputstate.info_png.color.colortype == LCT_PALETTE) {
     if (png_options->verbose) {
       printf("Palette was used,"
-             " compressed result is small enough to also try RGB or grey.\n");
+             " compressed result is small enough to also try RGB or gray.\n");
     }
     out2.clear();
-    LodePNGColorProfile profile;
-    lodepng_color_profile_init(&profile);
-    lodepng_get_color_profile(&profile, &image[0], w, h, &state.info_raw);
+    LodePNGColorStats stats;
+    lodepng_color_stats_init(&stats);
+    lodepng_compute_color_stats(&stats, &image[0], w, h, &state.info_raw);
     // Too small for tRNS chunk overhead.
-    if (w * h <= 16 && profile.key) profile.alpha = 1;
+    if (w * h <= 16 && stats.key) stats.alpha = 1;
     state.encoder.auto_convert = 0;
-    state.info_png.color.colortype = (profile.alpha ? LCT_RGBA : LCT_RGB);
+    state.info_png.color.colortype = (stats.alpha ? LCT_RGBA : LCT_RGB);
     state.info_png.color.bitdepth = 8;
-    state.info_png.color.key_defined = (profile.key && !profile.alpha);
+    state.info_png.color.key_defined = (stats.key && !stats.alpha);
     if (state.info_png.color.key_defined) {
       state.info_png.color.key_defined = 1;
-      state.info_png.color.key_r = (profile.key_r & 255u);
-      state.info_png.color.key_g = (profile.key_g & 255u);
-      state.info_png.color.key_b = (profile.key_b & 255u);
+      state.info_png.color.key_r = (stats.key_r & 255u);
+      state.info_png.color.key_g = (stats.key_g & 255u);
+      state.info_png.color.key_b = (stats.key_b & 255u);
     }
 
     error = lodepng::encode(out2, image, w, h, state);
