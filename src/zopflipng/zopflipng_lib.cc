@@ -38,12 +38,11 @@ See zopflipng_lib.h
 #include "../zopfli/deflate.h"
 #include "../zopfli/util.h"
 
-unsigned int mui;
-
 ZopfliPNGOptions::ZopfliPNGOptions()
   : lossy_transparent(0)
   , lossy_8bit(false)
   , auto_filter_strategy(true)
+  , keep_colortype(false)
   , use_zopfli(true)
   , num_iterations(15)
   , num_iterations_large(5)
@@ -751,7 +750,7 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
   lodepng::State inputstate;
   error = lodepng::decode(image, w, h, inputstate, origpng);
 
-  bool keep_colortype = false;
+  bool keep_colortype = png_options.keep_colortype;
 
   if (!png_options.keepchunks.empty()) {
     // If the user wants to keep the non-essential chunks bKGD or sBIT, the
@@ -763,10 +762,12 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
     // possible.
     std::set<std::string> keepchunks;
     ChunksToKeep(origpng, png_options.keepchunks, &keepchunks);
-    keep_colortype = keepchunks.count("bKGD") || keepchunks.count("sBIT");
-    if (keep_colortype && verbose) {
-      printf("Forced to keep original color type due to keeping bKGD or sBIT"
-             " chunk.\n");
+    if (keepchunks.count("bKGD") || keepchunks.count("sBIT")) {
+      if (!keep_colortype && verbose) {
+        printf("Forced to keep original color type due to keeping bKGD or sBIT"
+               " chunk.\n");
+      }
+      keep_colortype = true;
     }
   }
 

@@ -164,6 +164,7 @@ void ShowHelp() {
          "--ga_number_of_offspring   number of offspring per generation (d: 2)\n\n"
          " *********** MISCELLANEOUS ***********\n"
          "--keepchunks=[*,*,*...]    keep metadata chunks with these names\n"
+         "--keepcolortype            keep original color type and bit depth\n"
          "--t=[#]                    compress using # threads, 0 = compat. (d:1)\n"
          "--aff=[#,#,#...]           compression thr. affinity: mask,mask... (d: not set)\n"
          "--idle                     use idle process priority\n"
@@ -459,6 +460,8 @@ int main(int argc, char *argv[]) {
                  " --keepchunks=gAMA,cHRM,sRGB,iCCP\n");
           return 0;
         }
+      } else if (name == "--keepcolortype") {
+        png_options.keep_colortype = true;
       } else if (name == "--prefix") {
         use_prefix = true;
         if (!value.empty()) prefix = value;
@@ -472,13 +475,15 @@ int main(int argc, char *argv[]) {
         if (num < 1) num = 1;
         png_options.ga_stagnate_evaluations = num;
       } else if (name == "--ga_mutation_probability") {
-        if (num < 0) num = 0;
-        else if (num > 1) num = 1;
-        png_options.ga_mutation_probability = num;
+        double numf = atof(value.c_str());
+        if (numf < 0.0f) numf = 0.0f;
+        else if (numf > 1.0f) numf = 1.0f;
+        png_options.ga_mutation_probability = numf;
       } else if (name == "--ga_crossover_probability") {
-        if (num < 0) num = 0;
-        else if (num > 1) num = 1;
-        png_options.ga_crossover_probability = num;
+        double numf = atof(value.c_str());
+        if (numf < 0.0f) numf = 0.0f;
+        else if (numf > 1.0f) num = 1.0f;
+        png_options.ga_crossover_probability = numf;
       } else if (name == "--ga_number_of_offspring") {
         if (num < 1) num = 1;
         png_options.ga_number_of_offspring = num;
