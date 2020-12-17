@@ -161,7 +161,8 @@ void ShowHelp() {
          "--ga_stagnate_evaluations  number of sequential evaluations (d: 15)\n"
          "--ga_mutation_probability  probability of mutation per gene per gen. (d: 0.01)\n"
          "--ga_crossover_probability probability of crossover pergeneration (d: 0.9)\n"
-         "--ga_number_of_offspring   number of offspring per generation (d: 2)\n\n"
+         "--ga_number_of_offspring   number of offspring per generation (d: 2)\n"
+         "--ga_tournament_size       selecting an individual from a population (d: 2)\n\n"
          " *********** MISCELLANEOUS ***********\n"
          "--keepchunks=[*,*,*...]    keep metadata chunks with these names\n"
          "--keepcolortype            keep original color type and bit depth\n"
@@ -487,6 +488,9 @@ int main(int argc, char *argv[]) {
       } else if (name == "--ga_number_of_offspring") {
         if (num < 1) num = 1;
         png_options.ga_number_of_offspring = num;
+      } else if (name == "--ga_tournament_size") {
+        if (num < 1) num = 1;
+        png_options.ga_tournament_size = num;
       } else if (name == "--help") {
         ShowHelp();
         return 0;

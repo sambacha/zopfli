@@ -168,6 +168,8 @@ typedef struct CZopfliPNGOptions {
   float ga_mutation_probability;
 
   float ga_crossover_probability;
+  
+  unsigned ga_tournament_size;
 
   int ga_number_of_offspring;
 
@@ -367,6 +369,9 @@ struct ZopfliPNGOptions {
 
   // Genetic algorithm: probability of crossover per generation
   float ga_crossover_probability;
+  
+  // Genetic algorithm: the size of tournament
+  unsigned ga_tournament_size;
 
   // Genetic algorithm: number of offspring per generation
   int ga_number_of_offspring;

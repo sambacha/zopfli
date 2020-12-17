@@ -791,6 +791,7 @@ typedef struct GeneticAlgorithmSettings
   unsigned population_size;
   float mutation_probability;
   float crossover_probability;
+  unsigned tournament_size;
   unsigned number_of_offspring;
 } GeneticAlgorithmSettings;
 

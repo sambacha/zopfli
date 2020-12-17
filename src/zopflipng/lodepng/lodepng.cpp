@@ -6126,7 +6126,7 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
     unsigned best_size = UINT_MAX;
     unsigned total_size = 0;
     unsigned e_since_best = 0;
-    unsigned tournament_size = 2;
+    unsigned tournament_size = settings->ga.tournament_size;
 
     /*disable custom encoder for speed -- just get an estimate*/
     zlibsettings.custom_zlib = 0;
