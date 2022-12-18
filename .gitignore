@@ -3,3 +3,8 @@
 /zopfli*
 /defdbparser
 /libzopfli*
+.DS_Store
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-zopfli
